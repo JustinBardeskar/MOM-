@@ -227,31 +227,36 @@ class AgentRuntime:
                 has_vague_item = False
                 for act in candidate_items:
                     raw_work = act.task or act.action or act.description or ""
-                    work = ActionNormalizer.normalize_action_work(raw_work)
-
-                    # Generate a clean formatted description using generate_final_phrase
-                    final_desc = ActionNormalizer.generate_final_phrase(
-                        work, act.owner, act.recipient, act.deadline or act.deadline_text
+                    reframed = ExecutiveActionReframingEngine.reframe_action(
+                        raw_task=raw_work,
+                        owner=act.owner,
+                        recipient=getattr(act, "recipient", None),
+                        deadline=act.deadline or act.deadline_text,
                     )
+                    act.task = reframed["task"]
+                    act.action = reframed["action"]
+                    act.description = reframed["description"]
+                    act.owner = reframed["owner"]
+                    act.deadline = reframed["deadline"]
+                    act.deadline_text = reframed["deadline_text"]
 
-                    act.task = work
-                    act.action = work
-                    act.description = final_desc or work
-
-                    # If the LLM didn't provide evidence separately, preserve the raw spoken text
-                    if not act.evidence and not act.evidence_quote and raw_work != work:
+                    # Preserve raw evidence quote if not provided
+                    if not act.evidence and not act.evidence_quote and raw_work != reframed["task"]:
                         act.evidence = raw_work
                         act.evidence_quote = raw_work
 
                     is_valid, reason = ActionValidator.validate(act)
                     if is_valid:
                         validated_actions.append(act)
+                    elif len(act.task.split()) >= 3 and not ActionNormalizer.is_non_action_discussion(act.task):
+                        # Graceful retention for descriptive valid actions
+                        validated_actions.append(act)
                     else:
                         has_vague_item = True
                         logger.info("ActionItem filtered by ActionValidator: '%s' (Reason: %s)", raw_work, reason)
 
-                # Retry with explicit correction instructions if vague items were generated on early attempts
-                if has_vague_item and candidate_items and attempt < 3 and not validated_actions:
+                # Retry with explicit correction instructions only if all items failed on first attempt
+                if has_vague_item and candidate_items and attempt == 1 and not validated_actions:
                     raise AgentExecutionError(
                         "vague_action_item",
                         "The previous action item was too vague.\n\n"

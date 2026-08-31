@@ -679,16 +679,17 @@ class SelfCritiquePass:
 
                 if not desc or len(desc.strip()) < 5:
                     violations.append(f"Action item #{idx} description is empty or too short.")
-                if not owner or owner.lower() in ["assigned lead", "unassigned", "none", "execute"]:
-                    violations.append(f"Action item #{idx} has invalid or placeholder owner: '{owner}'.")
+                if owner and owner.lower() in ["assigned lead", "execute", "placeholder lead"]:
+                    violations.append(f"Action item #{idx} has invalid placeholder owner: '{owner}'.")
 
-                owners.add(owner.lower())
+                if owner:
+                    owners.add(owner.lower())
                 deadlines.add(deadline.lower())
                 priorities.add(priority)
 
             if len(actions) >= 3:
-                if len(owners) == 1 and list(owners)[0] in ["assigned lead", "execute", "unassigned"]:
-                    violations.append("All action items defaulted to the same generic owner.")
+                if len(owners) == 1 and list(owners)[0] in ["assigned lead", "execute", "placeholder lead"]:
+                    violations.append("All action items defaulted to the same generic placeholder owner.")
                 if len(deadlines) == 1 and list(deadlines)[0] == "end of sprint" and "end of sprint" not in lower_trans:
                     violations.append("All action items defaulted to ungrounded 'End of Sprint'.")
 
