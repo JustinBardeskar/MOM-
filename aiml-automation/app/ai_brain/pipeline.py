@@ -267,9 +267,18 @@ class AIBrainPipeline:
         raw_lines = [seg.text for seg in getattr(contract.preprocessing, "segments", []) if getattr(seg, "text", "").strip()]
         transcript_text = getattr(contract.preprocessing, "text", "") or " ".join(raw_lines) or ""
         from app.ai_brain.consensus import CrossAgentConsensusEngine
+        suggested_title = (
+            getattr(validated.analysis.meeting_understanding, "meeting_title", None)
+            or getattr(summary, "suggested_title", None)
+        )
+        meeting_type_val = getattr(validated.analysis.meeting_understanding.meeting_type, "value", None)
+        input_title = getattr(contract.meeting, "title", None) or getattr(contract.meeting, "meeting_title", None)
+
         resolved_title = CrossAgentConsensusEngine.generate_dynamic_meeting_title(
             transcript_text=transcript_text,
-            current_title=getattr(contract.meeting, "meeting_title", None),
+            current_title=input_title,
+            suggested_title=suggested_title,
+            meeting_type=meeting_type_val,
         )
 
         return MeetingIntelligenceResult(

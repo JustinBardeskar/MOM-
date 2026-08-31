@@ -465,7 +465,7 @@ class AgentOrchestrator:
                     definition,
                     contract,
                     understanding.meeting_type,
-                    memory_text,
+                    memory_text if definition.name not in [AgentName.SUMMARY, AgentName.MEETING_UNDERSTANDING, AgentName.TOPIC] else None,
                 )
                 for definition in self._SPECIALISTS
             ),
@@ -737,11 +737,23 @@ class AgentOrchestrator:
                 "Reviewed workstream deliverables and accountability across participating stakeholders.",
             ]
             
-            summary_paragraph = (
-                "The meeting convened participating stakeholders for an operational review and strategic alignment session. "
-                "Discussions centered on roadmap progression, milestone verification, and delivery commitments. "
-                "The stakeholders established consensus on core priorities and established execution next steps."
-            )
+            clean_stmts = []
+            for pt in summary_points[:3]:
+                _, txt = _parse_speaker_and_text(pt)
+                if len(txt) > 15:
+                    clean_stmts.append(txt.rstrip(".,;"))
+
+            if clean_stmts:
+                summary_paragraph = (
+                    f"The session convened to review core operational and technical priorities: {'; '.join(clean_stmts)}. "
+                    "The stakeholders established consensus on core priorities, ratified architectural approaches, and finalized execution ownership."
+                )
+            else:
+                summary_paragraph = (
+                    "The meeting convened participating stakeholders for an operational review and strategic alignment session. "
+                    "Discussions centered on roadmap progression, milestone verification, and delivery commitments. "
+                    "The stakeholders established consensus on core priorities and established execution next steps."
+                )
             return SummaryOutput(
                 executive_summary=summary_paragraph,
                 key_points=summary_points[:5],

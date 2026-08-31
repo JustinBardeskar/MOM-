@@ -266,7 +266,7 @@ class PromptManager:
             AgentName.MEETING_UNDERSTANDING: PromptTemplate(
                 agent=AgentName.MEETING_UNDERSTANDING,
                 version=version,
-                objective="Classify the meeting by deeply analyzing transcript discussion, terminology, and intent.",
+                objective="Classify the meeting type, extract the central theme, and synthesize a formal meeting title based on transcript content.",
                 rules=[
                     "Analyze the discussion content, terminology, participant roles, and conversational goals to classify into EXACTLY one of: 'technical', 'scrum', 'product', 'marketing', 'sales', 'client', 'strategy', 'executive', 'board', 'interview', 'hr', or 'general'.",
                     "Classification Taxonomy Guidelines:",
@@ -282,6 +282,8 @@ class PromptManager:
                     "  • 'interview': Candidate interview, technical hiring screen, HR screening.",
                     "  • 'hr': People operations, performance reviews, employee policy, benefits, headcount, onboarding.",
                     "  • 'general': Cross-functional catch-up, informational sharing, team sync without a single domain focus.",
+                    "In 'meeting_title', synthesize a formal, executive-grade 4-7 word title reflecting the ACTUAL specific topic and achievement of this session (e.g. 'PostgreSQL Optimization & Redis Architecture Review', 'Q3 User Onboarding & Figma Wireframe Review'). DO NOT output generic titles like 'Meeting', 'Sync', or 'Direct Transcript Sync'.",
+                    "In 'theme', provide a 1-sentence executive summary of the central mission/topic of this session.",
                     "In 'rationale', provide a concise 1-2 sentence executive explanation of WHY this classification was chosen based on evidence from the transcript.",
                     "If the audio is silence or background noise with no intelligible speech, classify as 'general' with confidence 0.1.",
                 ],
@@ -289,12 +291,14 @@ class PromptManager:
             AgentName.SUMMARY: PromptTemplate(
                 agent=AgentName.SUMMARY,
                 version=version,
-                objective="Synthesize an executive-ready business summary and key outcome bullet points.",
+                objective="Synthesize an executive-ready business summary and key outcome bullet points based STRICTLY on the current meeting transcript.",
                 rules=[
-                    "The 'meeting_summary' MUST be a polished, professional 2-3 paragraph executive brief.",
+                    "The 'meeting_summary' MUST summarize ONLY the discussion and decisions that occurred in the CURRENT transcript provided above.",
+                    "NEVER mention, echo, or blend in past meeting summaries or historical context.",
                     "Paragraph 1: Strategic context, primary meeting objectives, and core agenda.",
                     "Paragraph 2: Key debates, technical/business consensus, architecture choices, and milestone agreements.",
                     "Paragraph 3: Forward-looking next steps, operational commitments, and ownership trajectory.",
+                    "In 'suggested_title', provide a professional 4-6 word title summarizing what was accomplished in this meeting.",
                     "Do NOT summarize every conversation turn or re-narrate meeting dialogue. State strictly the core business takeaway and finalized outcome.",
                     "The 'key_points' list must contain 2-4 ultra-short bullet points (strictly 1 line each, max 10 words per point).",
                     "Eliminate all filler, transitional phrases, preamble, and conversational fluff.",

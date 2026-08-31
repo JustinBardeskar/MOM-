@@ -170,12 +170,23 @@ class MemoryStore(Protocol):
 
 class MeetingUnderstandingOutput(StrictModel):
     meeting_type: MeetingType = MeetingType.GENERAL
+    meeting_title: str | None = None
+    theme: str | None = None
     rationale: str = "Standard meeting review"
     confidence: float = Field(default=0.95, ge=0, le=1)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_understanding(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "title" in data and "meeting_title" not in data:
+                data["meeting_title"] = data.pop("title")
+        return data
 
 
 class SummaryOutput(StrictModel):
     executive_summary: str
+    suggested_title: str | None = None
     key_points: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.95, ge=0, le=1)
     prompt_version: str = "2.0.0"
@@ -188,6 +199,8 @@ class SummaryOutput(StrictModel):
         if isinstance(data, dict):
             if "summary" in data and "executive_summary" not in data:
                 data["executive_summary"] = data.pop("summary")
+            if "title" in data and "suggested_title" not in data:
+                data["suggested_title"] = data.pop("title")
             if "bullet_points" in data and "key_points" not in data:
                 data["key_points"] = data.pop("bullet_points")
             if "key_takeaways" in data and "key_points" not in data:
