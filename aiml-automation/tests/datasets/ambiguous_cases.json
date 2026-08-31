@@ -1,0 +1,14 @@
+[
+  {
+    "id": "amb_01",
+    "input": "We should probably look into the dashboard performance sometime.",
+    "expected_actionability": false,
+    "reason": "Vague aspirational idea without explicit commitment or deadline"
+  },
+  {
+    "id": "amb_02",
+    "input": "Maybe we could consider adding dark mode in the future.",
+    "expected_actionability": false,
+    "reason": "Hypothetical feature idea without owner or target timeline"
+  }
+]

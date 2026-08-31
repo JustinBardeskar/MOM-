@@ -1,0 +1,22 @@
+﻿# Python virtual environments
+.venv/
+venv/
+env/
+
+# Secrets & environment variables
+.env
+*.env
+
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+
+# Audio & media files
+*.mp4
+*.mp3
+*.wav
+*.m4a
+*.pdf
+scratch/

@@ -1,0 +1,52 @@
+[
+  {
+    "id": "pos_01",
+    "input": "Rahul: I'll send the updated pricing document to Sarah by tomorrow.",
+    "expected": {
+      "action": "Send the updated pricing document to Sarah",
+      "owner": "Rahul",
+      "deadline": "Tomorrow",
+      "status": "assigned"
+    }
+  },
+  {
+    "id": "pos_02",
+    "input": "Alex: Priya, please review the authentication module before Friday.",
+    "expected": {
+      "action": "Review the authentication module",
+      "owner": "Priya",
+      "deadline": "Friday",
+      "status": "assigned"
+    }
+  },
+  {
+    "id": "pos_03",
+    "input": "Sarah: Vikram, please deploy the latest staging build by end of day.",
+    "expected": {
+      "action": "Deploy the latest staging build",
+      "owner": "Vikram",
+      "deadline": "End of day",
+      "status": "assigned"
+    }
+  },
+  {
+    "id": "pos_04",
+    "input": "David: I will configure the Redis distributed caching cluster by next Monday.",
+    "expected": {
+      "action": "Configure the Redis distributed caching cluster",
+      "owner": "David",
+      "deadline": "Next Monday",
+      "status": "assigned"
+    }
+  },
+  {
+    "id": "pos_05",
+    "input": "Engineering Lead: We agreed that we will develop and test the database migration scripts by Wednesday.",
+    "expected": {
+      "action": "Develop and test the database migration scripts",
+      "owner": "Engineering Lead",
+      "deadline": "Wednesday",
+      "status": "assigned"
+    }
+  }
+]

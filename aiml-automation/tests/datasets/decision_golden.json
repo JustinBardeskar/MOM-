@@ -1,0 +1,26 @@
+[
+  {
+    "id": "dec_01",
+    "transcript": "Sarah: After evaluating AWS vs GCP, we unanimously decided to adopt AWS as our primary cloud provider due to existing reserved instances. Tom: Agreed, this saves $40k annually.",
+    "expected": [
+      {
+        "decision": "Adopt AWS as primary cloud infrastructure provider",
+        "rationale": "Leverages existing reserved instances yielding $40k annual cost savings",
+        "impact_scope": "Infrastructure & Finance",
+        "status": "approved"
+      }
+    ]
+  },
+  {
+    "id": "dec_02",
+    "transcript": "Alex: We approved moving the product launch from August 15 to September 1 to complete end-to-end security audits. Team: Consensus confirmed.",
+    "expected": [
+      {
+        "decision": "Shift product launch date to September 1",
+        "rationale": "Allows comprehensive completion and sign-off of security penetration audits",
+        "impact_scope": "Product & Go-To-Market",
+        "status": "approved"
+      }
+    ]
+  }
+]

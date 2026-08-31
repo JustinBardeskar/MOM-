@@ -1,0 +1,38 @@
+[
+  {
+    "id": "neg_01",
+    "input": "We discussed updating the API documentation.",
+    "expected": null,
+    "reason": "Mere conversation topic description, no commitment made"
+  },
+  {
+    "id": "neg_02",
+    "input": "The team talked about the payment gateway integration.",
+    "expected": null,
+    "reason": "Past conversational narration without assignment"
+  },
+  {
+    "id": "neg_03",
+    "input": "It may end up sending you and I.",
+    "expected": null,
+    "reason": "Fragmented conversational filler"
+  },
+  {
+    "id": "neg_04",
+    "input": "I feel like we're almost fixing something that's broken.",
+    "expected": null,
+    "reason": "Subjective opinion without actionable deliverable"
+  },
+  {
+    "id": "neg_05",
+    "input": "Good morning everyone, welcome to the sync.",
+    "expected": null,
+    "reason": "Meeting greeting"
+  },
+  {
+    "id": "neg_06",
+    "input": "Unreviewed.",
+    "expected": null,
+    "reason": "Single fragmented word"
+  }
+]

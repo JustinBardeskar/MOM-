@@ -1,0 +1,757 @@
+[
+  {
+    "id": "act_01",
+    "transcript": "Marketing Lead: We agreed that we will finalize the q3 marketing budget and circulate to finance for sign-off by friday, aug 28.",
+    "expected": [
+      {
+        "actionItem": "Finalize the Q3 marketing budget and circulate to finance for sign-off",
+        "actionOwner": "Marketing Lead",
+        "deadline": "By Friday, Aug 28",
+        "priority": "High",
+        "successCriteria": "Budget document approved and signed off by finance"
+      }
+    ]
+  },
+  {
+    "id": "act_02",
+    "transcript": "Backend Engineering Team: We agreed that we will fix the login timeout bug reported by qa on the staging environment within 2 business days.",
+    "expected": [
+      {
+        "actionItem": "Fix the login timeout bug reported by QA on the staging environment",
+        "actionOwner": "Backend Engineering Team",
+        "deadline": "Within 2 business days",
+        "priority": "High",
+        "successCriteria": "Bug resolved and verified fixed by QA on staging"
+      }
+    ]
+  },
+  {
+    "id": "act_03",
+    "transcript": "Project Manager: We agreed that we will send the updated project timeline to the client for review end of day tomorrow.",
+    "expected": [
+      {
+        "actionItem": "Send the updated project timeline to the client for review",
+        "actionOwner": "Project Manager",
+        "deadline": "End of day tomorrow",
+        "priority": "Medium",
+        "successCriteria": "Client has received the timeline and confirmed receipt"
+      }
+    ]
+  },
+  {
+    "id": "act_04",
+    "transcript": "Procurement Lead: We agreed that we will schedule a follow-up call with the vendor to negotiate contract renewal terms next week.",
+    "expected": [
+      {
+        "actionItem": "Schedule a follow-up call with the vendor to negotiate contract renewal terms",
+        "actionOwner": "Procurement Lead",
+        "deadline": "Next week",
+        "priority": "Medium",
+        "successCriteria": "Call scheduled and calendar invite sent"
+      }
+    ]
+  },
+  {
+    "id": "act_05",
+    "transcript": "HR Coordinator: We agreed that we will prepare the onboarding checklist for the two new hires starting next month before sept 1.",
+    "expected": [
+      {
+        "actionItem": "Prepare the onboarding checklist for the two new hires starting next month",
+        "actionOwner": "HR Coordinator",
+        "deadline": "Before Sept 1",
+        "priority": "Medium",
+        "successCriteria": "Checklist completed and shared with the hiring manager"
+      }
+    ]
+  },
+  {
+    "id": "act_06",
+    "transcript": "DevOps Team: We agreed that we will investigate the spike in server error rates from last tuesday's deployment within 24 hours.",
+    "expected": [
+      {
+        "actionItem": "Investigate the spike in server error rates from last Tuesday's deployment",
+        "actionOwner": "DevOps Team",
+        "deadline": "Within 24 hours",
+        "priority": "High",
+        "successCriteria": "Root cause identified and documented in an incident report"
+      }
+    ]
+  },
+  {
+    "id": "act_07",
+    "transcript": "Content Team: We agreed that we will update the pricing page copy to reflect the new subscription tiers by end of week.",
+    "expected": [
+      {
+        "actionItem": "Update the pricing page copy to reflect the new subscription tiers",
+        "actionOwner": "Content Team",
+        "deadline": "By end of week",
+        "priority": "Medium",
+        "successCriteria": "Pricing page live with updated tiers and reviewed by product"
+      }
+    ]
+  },
+  {
+    "id": "act_08",
+    "transcript": "Customer Support Lead: We agreed that we will compile customer feedback from the last three support tickets into a summary doc by wednesday.",
+    "expected": [
+      {
+        "actionItem": "Compile customer feedback from the last three support tickets into a summary doc",
+        "actionOwner": "Customer Support Lead",
+        "deadline": "By Wednesday",
+        "priority": "Low",
+        "successCriteria": "Summary doc shared in the product channel"
+      }
+    ]
+  },
+  {
+    "id": "act_09",
+    "transcript": "Security Team: We agreed that we will run a security audit on the new payment gateway integration before launch before the sept 10 launch date.",
+    "expected": [
+      {
+        "actionItem": "Run a security audit on the new payment gateway integration before launch",
+        "actionOwner": "Security Team",
+        "deadline": "Before the Sept 10 launch date",
+        "priority": "High",
+        "successCriteria": "Audit report completed with no critical vulnerabilities open"
+      }
+    ]
+  },
+  {
+    "id": "act_10",
+    "transcript": "PR Manager: We agreed that we will draft the press release for the product launch and send for legal review by next monday.",
+    "expected": [
+      {
+        "actionItem": "Draft the press release for the product launch and send for legal review",
+        "actionOwner": "PR Manager",
+        "deadline": "By next Monday",
+        "priority": "Medium",
+        "successCriteria": "Draft approved by legal and ready for distribution"
+      }
+    ]
+  },
+  {
+    "id": "act_11",
+    "transcript": "Database Team: We agreed that we will migrate the legacy user database to the new schema in staging end of sprint (sept 5).",
+    "expected": [
+      {
+        "actionItem": "Migrate the legacy user database to the new schema in staging",
+        "actionOwner": "Database Team",
+        "deadline": "End of sprint (Sept 5)",
+        "priority": "High",
+        "successCriteria": "Migration completed with zero data loss verified"
+      }
+    ]
+  },
+  {
+    "id": "act_12",
+    "transcript": "Growth Team: We agreed that we will set up an a/b test for the new homepage cta button within 3 business days.",
+    "expected": [
+      {
+        "actionItem": "Set up an A/B test for the new homepage CTA button",
+        "actionOwner": "Growth Team",
+        "deadline": "Within 3 business days",
+        "priority": "Medium",
+        "successCriteria": "Test live and tracking conversions in the analytics dashboard"
+      }
+    ]
+  },
+  {
+    "id": "act_13",
+    "transcript": "Design Lead: We agreed that we will follow up with the design team on the finalized icon set for the mobile app by thursday.",
+    "expected": [
+      {
+        "actionItem": "Follow up with the design team on the finalized icon set for the mobile app",
+        "actionOwner": "Design Lead",
+        "deadline": "By Thursday",
+        "priority": "Low",
+        "successCriteria": "Final icon set delivered and merged into the design system"
+      }
+    ]
+  },
+  {
+    "id": "act_14",
+    "transcript": "Finance Analyst: We agreed that we will reconcile last month's expense reports before the finance close by the 30th.",
+    "expected": [
+      {
+        "actionItem": "Reconcile last month's expense reports before the finance close",
+        "actionOwner": "Finance Analyst",
+        "deadline": "By the 30th",
+        "priority": "High",
+        "successCriteria": "All expense reports reconciled with no discrepancies"
+      }
+    ]
+  },
+  {
+    "id": "act_15",
+    "transcript": "Research Team: We agreed that we will reach out to the panel of 1,000+ existing survey respondents to distribute the new survey by end of week.",
+    "expected": [
+      {
+        "actionItem": "Reach out to the panel of 1,000+ existing survey respondents to distribute the new survey",
+        "actionOwner": "Research Team",
+        "deadline": "By end of week",
+        "priority": "Medium",
+        "successCriteria": "Survey sent to the full panel and response tracking set up"
+      }
+    ]
+  },
+  {
+    "id": "act_16",
+    "transcript": "Release Manager: We agreed that we will review and sign off on the 12.4 release milestone checklist before next sprint planning.",
+    "expected": [
+      {
+        "actionItem": "Review and sign off on the 12.4 release milestone checklist",
+        "actionOwner": "Release Manager",
+        "deadline": "Before next sprint planning",
+        "priority": "High",
+        "successCriteria": "Milestone checklist signed off with no blockers open"
+      }
+    ]
+  },
+  {
+    "id": "act_17",
+    "transcript": "Data Ops Team: We agreed that we will complete the manual sort of the flagged data entries agreed on in the meeting within 2 business days.",
+    "expected": [
+      {
+        "actionItem": "Complete the manual sort of the flagged data entries agreed on in the meeting",
+        "actionOwner": "Data Ops Team",
+        "deadline": "Within 2 business days",
+        "priority": "Low",
+        "successCriteria": "All flagged entries sorted and validated"
+      }
+    ]
+  },
+  {
+    "id": "act_18",
+    "transcript": "HR Business Partner: We agreed that we will draft the internal faq document answering common questions about the new policy by friday.",
+    "expected": [
+      {
+        "actionItem": "Draft the internal FAQ document answering common questions about the new policy",
+        "actionOwner": "HR Business Partner",
+        "deadline": "By Friday",
+        "priority": "Low",
+        "successCriteria": "FAQ published on the internal wiki"
+      }
+    ]
+  },
+  {
+    "id": "act_19",
+    "transcript": "SRE Team: We agreed that we will set up monitoring alerts for the new microservice before it goes live before go-live date.",
+    "expected": [
+      {
+        "actionItem": "Set up monitoring alerts for the new microservice before it goes live",
+        "actionOwner": "SRE Team",
+        "deadline": "Before go-live date",
+        "priority": "High",
+        "successCriteria": "Alerts configured and tested with a simulated failure"
+      }
+    ]
+  },
+  {
+    "id": "act_20",
+    "transcript": "Legal Counsel: We agreed that we will coordinate with the legal team to finalize the updated terms of service within 5 business days.",
+    "expected": [
+      {
+        "actionItem": "Coordinate with the legal team to finalize the updated terms of service",
+        "actionOwner": "Legal Counsel",
+        "deadline": "Within 5 business days",
+        "priority": "Medium",
+        "successCriteria": "Updated terms approved and scheduled for publish"
+      }
+    ]
+  },
+  {
+    "id": "act_21",
+    "transcript": "Solutions Engineer: We agreed that we will prepare the demo environment for the client walkthrough next week by monday.",
+    "expected": [
+      {
+        "actionItem": "Prepare the demo environment for the client walkthrough next week",
+        "actionOwner": "Solutions Engineer",
+        "deadline": "By Monday",
+        "priority": "High",
+        "successCriteria": "Demo environment tested end-to-end with no errors"
+      }
+    ]
+  },
+  {
+    "id": "act_22",
+    "transcript": "Cloud Infrastructure Lead: We agreed that we will audit the current aws spend and identify cost-cutting opportunities end of month.",
+    "expected": [
+      {
+        "actionItem": "Audit the current AWS spend and identify cost-cutting opportunities",
+        "actionOwner": "Cloud Infrastructure Lead",
+        "deadline": "End of month",
+        "priority": "Medium",
+        "successCriteria": "Cost report delivered with at least 3 actionable recommendations"
+      }
+    ]
+  },
+  {
+    "id": "act_23",
+    "transcript": "Technical Writer: We agreed that we will update the api documentation to reflect the v2 endpoint changes by next friday.",
+    "expected": [
+      {
+        "actionItem": "Update the API documentation to reflect the v2 endpoint changes",
+        "actionOwner": "Technical Writer",
+        "deadline": "By next Friday",
+        "priority": "Medium",
+        "successCriteria": "Docs published and reviewed by the API team"
+      }
+    ]
+  },
+  {
+    "id": "act_24",
+    "transcript": "Engineering Manager: We agreed that we will interview the two shortlisted candidates for the qa engineer role by wednesday.",
+    "expected": [
+      {
+        "actionItem": "Interview the two shortlisted candidates for the QA engineer role",
+        "actionOwner": "Engineering Manager",
+        "deadline": "By Wednesday",
+        "priority": "Medium",
+        "successCriteria": "Both interviews completed with feedback submitted"
+      }
+    ]
+  },
+  {
+    "id": "act_25",
+    "transcript": "Lead Developer: We agreed that we will resolve the merge conflicts blocking the release branch today, end of day.",
+    "expected": [
+      {
+        "actionItem": "Resolve the merge conflicts blocking the release branch",
+        "actionOwner": "Lead Developer",
+        "deadline": "Today, end of day",
+        "priority": "High",
+        "successCriteria": "Release branch merged cleanly with CI passing"
+      }
+    ]
+  },
+  {
+    "id": "act_26",
+    "transcript": "VP of Operations: We agreed that we will prepare speaking notes for the quarterly business review presentation two days before the qbr.",
+    "expected": [
+      {
+        "actionItem": "Prepare speaking notes for the quarterly business review presentation",
+        "actionOwner": "VP of Operations",
+        "deadline": "Two days before the QBR",
+        "priority": "Medium",
+        "successCriteria": "Notes finalized and shared with the executive team"
+      }
+    ]
+  },
+  {
+    "id": "act_27",
+    "transcript": "Research Analyst: We agreed that we will qa the new survey targeting the 1,000+ respondent panel before it goes out before end of week.",
+    "expected": [
+      {
+        "actionItem": "QA the new survey targeting the 1,000+ respondent panel before it goes out",
+        "actionOwner": "Research Analyst",
+        "deadline": "Before end of week",
+        "priority": "Medium",
+        "successCriteria": "Survey checked and confirmed ready to send to the panel"
+      }
+    ]
+  },
+  {
+    "id": "act_28",
+    "transcript": "DevOps Engineer: We agreed that we will update the ci/cd pipeline to include the new automated regression tests within 3 business days.",
+    "expected": [
+      {
+        "actionItem": "Update the CI/CD pipeline to include the new automated regression tests",
+        "actionOwner": "DevOps Engineer",
+        "deadline": "Within 3 business days",
+        "priority": "Medium",
+        "successCriteria": "Pipeline updated and regression suite passing on merge"
+      }
+    ]
+  },
+  {
+    "id": "act_29",
+    "transcript": "Localization Team: We agreed that we will coordinate translation of the app's onboarding flow into spanish and french by end of next sprint.",
+    "expected": [
+      {
+        "actionItem": "Coordinate translation of the app's onboarding flow into Spanish and French",
+        "actionOwner": "Localization Team",
+        "deadline": "By end of next sprint",
+        "priority": "Low",
+        "successCriteria": "Translated strings reviewed and merged"
+      }
+    ]
+  },
+  {
+    "id": "act_30",
+    "transcript": "Supply Chain Manager: We agreed that we will draft a risk mitigation plan for the vendor delay affecting the hardware shipment within 2 business days.",
+    "expected": [
+      {
+        "actionItem": "Draft a risk mitigation plan for the vendor delay affecting the hardware shipment",
+        "actionOwner": "Supply Chain Manager",
+        "deadline": "Within 2 business days",
+        "priority": "High",
+        "successCriteria": "Mitigation plan documented and shared with stakeholders"
+      }
+    ]
+  },
+  {
+    "id": "act_31",
+    "transcript": "Data Analytics Team: We agreed that we will set up a dashboard to track weekly active users after the new feature launch before launch day.",
+    "expected": [
+      {
+        "actionItem": "Set up a dashboard to track weekly active users after the new feature launch",
+        "actionOwner": "Data Analytics Team",
+        "deadline": "Before launch day",
+        "priority": "High",
+        "successCriteria": "Dashboard live and validated against raw event data"
+      }
+    ]
+  },
+  {
+    "id": "act_32",
+    "transcript": "Product Manager: We agreed that we will follow up with beta testers to collect feedback on the new ui by end of week.",
+    "expected": [
+      {
+        "actionItem": "Follow up with beta testers to collect feedback on the new UI",
+        "actionOwner": "Product Manager",
+        "deadline": "By end of week",
+        "priority": "Medium",
+        "successCriteria": "Feedback collected from at least 80% of beta testers"
+      }
+    ]
+  },
+  {
+    "id": "act_33",
+    "transcript": "IT Infrastructure Team: We agreed that we will renew the ssl certificates before they expire next month before the 15th.",
+    "expected": [
+      {
+        "actionItem": "Renew the SSL certificates before they expire next month",
+        "actionOwner": "IT Infrastructure Team",
+        "deadline": "Before the 15th",
+        "priority": "High",
+        "successCriteria": "Certificates renewed and verified across all environments"
+      }
+    ]
+  },
+  {
+    "id": "act_34",
+    "transcript": "Support Team Lead: We agreed that we will prepare training materials for the new customer support hires before their start date.",
+    "expected": [
+      {
+        "actionItem": "Prepare training materials for the new customer support hires",
+        "actionOwner": "Support Team Lead",
+        "deadline": "Before their start date",
+        "priority": "Medium",
+        "successCriteria": "Training materials completed and uploaded to the LMS"
+      }
+    ]
+  },
+  {
+    "id": "act_35",
+    "transcript": "Business Analyst: We agreed that we will review the competitor pricing analysis and share key takeaways with leadership by thursday.",
+    "expected": [
+      {
+        "actionItem": "Review the competitor pricing analysis and share key takeaways with leadership",
+        "actionOwner": "Business Analyst",
+        "deadline": "By Thursday",
+        "priority": "Low",
+        "successCriteria": "Analysis shared with leadership and discussed in the next meeting"
+      }
+    ]
+  },
+  {
+    "id": "act_36",
+    "transcript": "Security Engineer: We agreed that we will patch the critical vulnerability flagged in the latest dependency scan within 24 hours.",
+    "expected": [
+      {
+        "actionItem": "Patch the critical vulnerability flagged in the latest dependency scan",
+        "actionOwner": "Security Engineer",
+        "deadline": "Within 24 hours",
+        "priority": "High",
+        "successCriteria": "Patch deployed and vulnerability scan re-run clean"
+      }
+    ]
+  },
+  {
+    "id": "act_37",
+    "transcript": "Office Manager: We agreed that we will coordinate office relocation logistics with the facilities team within 2 weeks.",
+    "expected": [
+      {
+        "actionItem": "Coordinate office relocation logistics with the facilities team",
+        "actionOwner": "Office Manager",
+        "deadline": "Within 2 weeks",
+        "priority": "Low",
+        "successCriteria": "Relocation plan finalized and communicated to all staff"
+      }
+    ]
+  },
+  {
+    "id": "act_38",
+    "transcript": "Scrum Master: We agreed that we will finalize the sprint retrospective action items and assign owners by end of day today.",
+    "expected": [
+      {
+        "actionItem": "Finalize the sprint retrospective action items and assign owners",
+        "actionOwner": "Scrum Master",
+        "deadline": "By end of day today",
+        "priority": "Medium",
+        "successCriteria": "Retrospective doc updated with owners and due dates"
+      }
+    ]
+  },
+  {
+    "id": "act_39",
+    "transcript": "QA Team: We agreed that we will test the payment refund flow end-to-end before the feature ships before friday's release.",
+    "expected": [
+      {
+        "actionItem": "Test the payment refund flow end-to-end before the feature ships",
+        "actionOwner": "QA Team",
+        "deadline": "Before Friday's release",
+        "priority": "High",
+        "successCriteria": "Refund flow tested across all payment methods with no defects"
+      }
+    ]
+  },
+  {
+    "id": "act_40",
+    "transcript": "Marketing Coordinator: We agreed that we will draft the quarterly newsletter highlighting recent product updates by the 5th of next month.",
+    "expected": [
+      {
+        "actionItem": "Draft the quarterly newsletter highlighting recent product updates",
+        "actionOwner": "Marketing Coordinator",
+        "deadline": "By the 5th of next month",
+        "priority": "Low",
+        "successCriteria": "Newsletter drafted and approved for send"
+      }
+    ]
+  },
+  {
+    "id": "act_41",
+    "transcript": "Solutions Architect: We agreed that we will set up single sign-on (sso) for the enterprise client's account within 5 business days.",
+    "expected": [
+      {
+        "actionItem": "Set up single sign-on (SSO) for the enterprise client's account",
+        "actionOwner": "Solutions Architect",
+        "deadline": "Within 5 business days",
+        "priority": "High",
+        "successCriteria": "SSO configured and tested with the client's IT team"
+      }
+    ]
+  },
+  {
+    "id": "act_42",
+    "transcript": "CRM Administrator: We agreed that we will consolidate duplicate customer records identified in the crm audit by end of month.",
+    "expected": [
+      {
+        "actionItem": "Consolidate duplicate customer records identified in the CRM audit",
+        "actionOwner": "CRM Administrator",
+        "deadline": "By end of month",
+        "priority": "Medium",
+        "successCriteria": "Duplicate records merged with no data loss"
+      }
+    ]
+  },
+  {
+    "id": "act_43",
+    "transcript": "Database Team: We agreed that we will prepare the rollback plan in case the database migration fails before the migration window.",
+    "expected": [
+      {
+        "actionItem": "Prepare the rollback plan in case the database migration fails",
+        "actionOwner": "Database Team",
+        "deadline": "Before the migration window",
+        "priority": "High",
+        "successCriteria": "Rollback plan documented and dry-run tested"
+      }
+    ]
+  },
+  {
+    "id": "act_44",
+    "transcript": "HR Manager: We agreed that we will update the employee handbook with the revised remote work policy within 1 week.",
+    "expected": [
+      {
+        "actionItem": "Update the employee handbook with the revised remote work policy",
+        "actionOwner": "HR Manager",
+        "deadline": "Within 1 week",
+        "priority": "Medium",
+        "successCriteria": "Handbook updated and distributed to all employees"
+      }
+    ]
+  },
+  {
+    "id": "act_45",
+    "transcript": "ML Engineering Team: We agreed that we will benchmark the new model against the current production model on latency and accuracy by end of sprint.",
+    "expected": [
+      {
+        "actionItem": "Benchmark the new model against the current production model on latency and accuracy",
+        "actionOwner": "ML Engineering Team",
+        "deadline": "By end of sprint",
+        "priority": "High",
+        "successCriteria": "Benchmark report completed with a clear go/no-go recommendation"
+      }
+    ]
+  },
+  {
+    "id": "act_46",
+    "transcript": "Support Operations Lead: We agreed that we will set up the escalation path for critical customer incidents over the weekend before friday 6 pm.",
+    "expected": [
+      {
+        "actionItem": "Set up the escalation path for critical customer incidents over the weekend",
+        "actionOwner": "Support Operations Lead",
+        "deadline": "Before Friday 6 PM",
+        "priority": "High",
+        "successCriteria": "On-call rotation and escalation doc published to the team"
+      }
+    ]
+  },
+  {
+    "id": "act_47",
+    "transcript": "Social Media Manager: We agreed that we will review and approve the social media content calendar for next month by end of week.",
+    "expected": [
+      {
+        "actionItem": "Review and approve the social media content calendar for next month",
+        "actionOwner": "Social Media Manager",
+        "deadline": "By end of week",
+        "priority": "Low",
+        "successCriteria": "Calendar approved with no pending edits"
+      }
+    ]
+  },
+  {
+    "id": "act_48",
+    "transcript": "QA Engineer: We agreed that we will clean up the test data left in the staging database from last week's load test by tomorrow.",
+    "expected": [
+      {
+        "actionItem": "Clean up the test data left in the staging database from last week's load test",
+        "actionOwner": "QA Engineer",
+        "deadline": "By tomorrow",
+        "priority": "Low",
+        "successCriteria": "Staging database cleared of test records and verified"
+      }
+    ]
+  },
+  {
+    "id": "act_49",
+    "transcript": "Accounts Payable: We agreed that we will coordinate with finance to process the overdue vendor invoice within 3 business days.",
+    "expected": [
+      {
+        "actionItem": "Coordinate with finance to process the overdue vendor invoice",
+        "actionOwner": "Accounts Payable",
+        "deadline": "Within 3 business days",
+        "priority": "Medium",
+        "successCriteria": "Invoice processed and payment confirmation received"
+      }
+    ]
+  },
+  {
+    "id": "act_50",
+    "transcript": "Incident Commander: We agreed that we will document the incident postmortem from yesterday's outage and share with the team within 48 hours.",
+    "expected": [
+      {
+        "actionItem": "Document the incident postmortem from yesterday's outage and share with the team",
+        "actionOwner": "Incident Commander",
+        "deadline": "Within 48 hours",
+        "priority": "High",
+        "successCriteria": "Postmortem doc published with action items assigned"
+      }
+    ]
+  },
+  {
+    "id": "act_51",
+    "transcript": "Sales Enablement Lead: We agreed that we will update the sales deck with the latest case studies and pricing by end of week.",
+    "expected": [
+      {
+        "actionItem": "Update the sales deck with the latest case studies and pricing",
+        "actionOwner": "Sales Enablement Lead",
+        "deadline": "By end of week",
+        "priority": "Medium",
+        "successCriteria": "Deck updated and shared with the sales team"
+      }
+    ]
+  },
+  {
+    "id": "act_52",
+    "transcript": "Team Operations Coordinator: We agreed that we will confirm the venue and catering for the upcoming team offsite within 1 week.",
+    "expected": [
+      {
+        "actionItem": "Confirm the venue and catering for the upcoming team offsite",
+        "actionOwner": "Team Operations Coordinator",
+        "deadline": "Within 1 week",
+        "priority": "Low",
+        "successCriteria": "Venue and catering booked and confirmed in writing"
+      }
+    ]
+  },
+  {
+    "id": "act_53",
+    "transcript": "Vendor Manager: We agreed that we will negotiate renewal terms with the survey panel provider before the contract expires before contract expiry on the 30th.",
+    "expected": [
+      {
+        "actionItem": "Negotiate renewal terms with the survey panel provider before the contract expires",
+        "actionOwner": "Vendor Manager",
+        "deadline": "Before contract expiry on the 30th",
+        "priority": "Medium",
+        "successCriteria": "Renewal terms signed or an alternative provider selected"
+      }
+    ]
+  },
+  {
+    "id": "act_54",
+    "transcript": "Chief of Staff: We agreed that we will prepare the executive summary slide covering this quarter's milestones for the board meeting two days before the board meeting.",
+    "expected": [
+      {
+        "actionItem": "Prepare the executive summary slide covering this quarter's milestones for the board meeting",
+        "actionOwner": "Chief of Staff",
+        "deadline": "Two days before the board meeting",
+        "priority": "High",
+        "successCriteria": "Slide reviewed and approved by the CEO"
+      }
+    ]
+  },
+  {
+    "id": "act_55",
+    "transcript": "Data Ops Analyst: We agreed that we will verify the manual sort picked up every entry flagged for inclusion during the meeting within 2 business days.",
+    "expected": [
+      {
+        "actionItem": "Verify the manual sort picked up every entry flagged for inclusion during the meeting",
+        "actionOwner": "Data Ops Analyst",
+        "deadline": "Within 2 business days",
+        "priority": "Medium",
+        "successCriteria": "Sort output cross-checked against the flagged list with zero misses"
+      }
+    ]
+  },
+  {
+    "id": "act_56",
+    "transcript": "Research Team: We agreed that we will retest the survey distribution flow to the existing panel before the next send by monday.",
+    "expected": [
+      {
+        "actionItem": "Retest the survey distribution flow to the existing panel before the next send",
+        "actionOwner": "Research Team",
+        "deadline": "By Monday",
+        "priority": "Medium",
+        "successCriteria": "Test send completed and delivery confirmed to a sample of the panel"
+      }
+    ]
+  },
+  {
+    "id": "failing_transcript_benchmark",
+    "transcript": "Speaker 1: We need to reach out to the panel of 1,000+ existing survey respondents to distribute the new survey by end of week. Speaker 2: Also, Release Manager will review and sign off on the 12.4 release milestone checklist before next sprint planning. Speaker 3: Data Ops Team will complete the manual sort of the flagged data entries within 2 business days.",
+    "expected": [
+      {
+        "actionItem": "Reach out to the panel of 1,000+ existing survey respondents to distribute the new survey",
+        "actionOwner": "Research Team",
+        "deadline": "By end of week",
+        "priority": "Medium",
+        "successCriteria": "Survey sent to the full panel and response tracking set up"
+      },
+      {
+        "actionItem": "Review and sign off on the 12.4 release milestone checklist",
+        "actionOwner": "Release Manager",
+        "deadline": "Before next sprint planning",
+        "priority": "High",
+        "successCriteria": "Milestone checklist signed off with no blockers open"
+      },
+      {
+        "actionItem": "Complete the manual sort of the flagged data entries agreed on in the meeting",
+        "actionOwner": "Data Ops Team",
+        "deadline": "Within 2 business days",
+        "priority": "Low",
+        "successCriteria": "All flagged entries sorted and validated"
+      }
+    ]
+  }
+]

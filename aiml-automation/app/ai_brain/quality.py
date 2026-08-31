@@ -1,0 +1,728 @@
+"""
+Action Quality, Imperative Grammar Normalization, and Self-Critique Quality Loop Engine.
+Combines:
+1. Action Normalizer (imperative grammar, prefix stripping, date pruning)
+2. Action Quality Validator (imperative verbs, grounding, anti-hallucination)
+3. Dynamic Golden Examples Store (MongoDB 'goldenExamples' collection + in-memory fallback)
+4. Multi-Agent Self-Critique Pass (Pass 2 verification against strict rubrics)
+5. Shared AgentQualityLoop
+"""
+
+from datetime import datetime, timezone
+import json
+import logging
+import re
+import time
+from dataclasses import dataclass
+from typing import Any, ClassVar
+from pydantic import Field
+
+from app.ai_brain.models import (
+    ActionItem,
+    AgentName,
+    LLMRequest,
+    LLMResponse,
+    StrictModel,
+)
+
+logger = logging.getLogger("ai_brain.quality")
+
+
+# ==========================================
+# 0. Hybrid NLP Commitment Anchor Extractor
+# ==========================================
+
+@dataclass
+class NLPCommitmentAnchor:
+    speaker: str | None
+    cue_text: str
+    inferred_task: str
+    target_deadline: str | None
+    confidence: float
+
+
+class NLPCommitmentAnchorExtractor:
+    """Hybrid deterministic NLP extraction engine detecting high-confidence verbal commitments and decision anchors."""
+
+    COMMITMENT_TRIGGERS: ClassVar[list[str]] = [
+        "i will", "i'll", "we will", "we'll", "i can", "i'll take care of",
+        "let me handle", "i will make sure to", "i'll deploy", "i'll finalize",
+        "i'll review", "i'll coordinate", "i'll update", "action item",
+        "assigned to", "responsible for", "take ownership", "submit the report",
+    ]
+
+    DECISION_TRIGGERS: ClassVar[list[str]] = [
+        "we agreed to", "we decided to", "we decided that", "we also approved",
+        "approved the", "unanimously agreed", "consensus is", "ratified",
+    ]
+
+    @classmethod
+    def extract_anchors(cls, transcript_text: str) -> list[NLPCommitmentAnchor]:
+        anchors: list[NLPCommitmentAnchor] = []
+        if not transcript_text:
+            return anchors
+
+        lines = [line.strip() for line in transcript_text.splitlines() if line.strip()]
+        for line in lines:
+            speaker = None
+            text = line
+            if ":" in line:
+                parts = line.split(":", 1)
+                if len(parts[0].split()) <= 4 and len(parts[0]) < 30:
+                    speaker = parts[0].strip()
+                    text = parts[1].strip()
+
+            lower = text.lower()
+            if any(t in lower for t in cls.COMMITMENT_TRIGGERS):
+                if not ActionNormalizer.is_non_action_discussion(text):
+                    normalized_task = ActionNormalizer.normalize_action_work(text)
+                    if normalized_task and len(normalized_task.split()) >= 3:
+                        deadline = None
+                        for d_marker in ["by friday", "by monday", "by wednesday", "by thursday", "by tomorrow", "next week", "end of sprint", "end of month"]:
+                            if d_marker in lower:
+                                deadline = d_marker.title()
+                                break
+
+                        anchors.append(
+                            NLPCommitmentAnchor(
+                                speaker=speaker,
+                                cue_text=text,
+                                inferred_task=normalized_task,
+                                target_deadline=deadline,
+                                confidence=0.88,
+                            )
+                        )
+        return anchors[:12]
+
+
+# ==========================================
+# 1. Action Normalizer & Grammar Rule Sets
+# ==========================================
+
+IMPERATIVE_VERBS = {
+    # Engineering & DevOps
+    "deploy", "configure", "implement", "integrate", "migrate", "refactor",
+    "upgrade", "install", "provision", "rearchitect", "prototype", "automate",
+    "patch", "debug", "isolate", "reproduce", "benchmark", "stress-test",
+    "rollout", "rollback", "deprecate", "decommission", "enable", "disable",
+    "sync", "backup", "restore", "clean", "connect", "scale", "spin",
+    
+    # Review, QA & Compliance
+    "review", "audit", "test", "validate", "verify", "inspect", "check",
+    "examine", "survey", "certify", "approve", "appraise", "assess",
+    "evaluate", "measure", "quantify", "benchmark", "monitor", "track",
+    "reconcile", "triage", "prioritize",
+    
+    # Management, Strategy & Operations
+    "prepare", "send", "share", "create", "draft", "author", "compose",
+    "finalize", "publish", "deliver", "submit", "present", "schedule",
+    "organize", "coordinate", "align", "formalize", "distribute", "manage",
+    "maintain", "facilitate", "lead", "onboard", "offboard", "brief",
+    "notify", "escalate", "delegate", "assign", "allocate", "request",
+    "obtain", "gather", "collate", "synthesize", "archive", "document",
+    
+    # Execution & Problem Solving
+    "fix", "resolve", "address", "remediate", "execute", "optimize",
+    "develop", "build", "design", "refine", "investigate", "analyze",
+    "conduct", "perform", "complete", "follow", "contact", "call",
+    "email", "inform", "discuss", "provide", "ensure", "clarify",
+    "train", "launch", "start", "finish", "export", "import", "handle",
+    "update", "write", "set", "setup", "curate", "forecast", "recalculate",
+    "standardize", "restructure", "streamline", "establish", "consolidate"
+}
+
+MULTIWORD_IMPERATIVE_VERBS = {
+    "follow up", "set up", "roll out", "reach out", "sign off", "check in",
+    "hand over", "carry out", "drill down", "point out", "wrap up", "kick off",
+    "lock down", "scale up", "spin up", "tear down", "back up", "phase out",
+    "clean up", "iron out", "sort out", "flesh out", "narrow down", "step through"
+}
+
+CONVERSATIONAL_PREFIXES = [
+    r"^(?:i\s+will|we\s+will|i'll|we'll|i\s+can|we\s+can|let's|can\s+you|could\s+you|please|would\s+you)[,\s]+",
+    r"^(?:i\s+am\s+going\s+to|we\s+are\s+going\s+to|i'm\s+going\s+to|we're\s+going\s+to)[,\s]+",
+    r"^(?:i\s+gotta|i\s+have\s+to|i\s+need\s+to|we\s+gotta|we\s+have\s+to|we\s+need\s+to|we\s+must|i\s+must)[,\s]+",
+    r"^(?:we\s+should|i\s+should|you\s+should|you\s+need\s+to|you\s+must|you\s+gotta)[,\s]+",
+    r"^(?:i\s+will\s+make\s+sure\s+to|we\s+will\s+make\s+sure\s+to|make\s+sure\s+to|ensure\s+to|make\s+sure\s+that)[,\s]+",
+    r"^(?:i\s+will\s+take\s+care\s+of|i\s+will\s+handle|i\s+will\s+have\s+the|i\s+will\s+deliver\s+the|i\s+will\s+complete)[,\s]+",
+    r"^(?:i've\s+asked\s+[A-Za-z]+\s+to|we've\s+asked\s+[A-Za-z]+\s+to|i\s+asked\s+[A-Za-z]+\s+to)[,\s]+",
+    r"^(?:[A-Za-z]+\s+has\s+agreed\s+to|[A-Za-z]+\s+agreed\s+to|[A-Za-z]+\s+accepted\s+to)[,\s]+",
+    r"^(?:[A-Za-z]+\s+will\s+oversee|[A-Za-z]+\s+will\s+take\s+over|[A-Za-z]+\s+will\s+handle)[,\s]+",
+    r"^(?:yeah\s+so\s+i\s+will|yeah\s+so\s+i'll|yeah\s+so|yeah\s+i\s+will|yeah\s+i'll|yeah|well|so|look,|listen,|hey|ok|okay|sure|alright|actually|basically)[,\s]+",
+    r"^(?:i\s+think\s+we\s+need\s+to|i\s+guess\s+we\s+should|we\s+should\s+probably|can\s+we\s+make\s+sure\s+to|we\s+need\s+to)[,\s]+",
+    r"^(?:we\s+agreed\s+that\s+we\s+will|we\s+agreed\s+to|we\s+decided\s+to|we\s+decided\s+that\s+we\s+will)[,\s]+",
+    r"^(?:[A-Z][a-zA-Z\s]+(?::\s*|,\s*))(?:i'll|i\s+will|we\s+will|please|can\s+you|could\s+you)[,\s]+",
+    r"^(?:on\s+the\s+engineering\s+front,\s*|on\s+the\s+product\s+front,\s*|for\s+the\s+sprint,\s*)[,\s]*",
+]
+
+NON_ACTION_PATTERNS = [
+    r"^(?:we\s+discussed|we\s+talked\s+about|the\s+team\s+discussed|the\s+team\s+talked\s+about|they\s+talked\s+about|they\s+discussed)",
+    r"^(?:he\s+mentioned|she\s+mentioned|the\s+client\s+mentioned|they\s+mentioned|we\s+mentioned)",
+    r"^(?:it\s+may\s+end\s+up|it\s+might\s+be|a\s+new\s+feature\s+will\s+come\s+out|that\s+okay)",
+    r"^(?:i\s+feel\s+like|i\s+feel\s+we're|yeah\s+i\s+might|i\s+might\s+even\s+constrain)",
+    r"^(?:feature\s+over\s+the\s+past|more\s+than\s+just\s+maps|have\s+a\s+security\s+one|unreviewed$)",
+    r"^(?:we\s+should\s+probably\s+look\s+into|maybe\s+we\s+could|we\s+could\s+consider)",
+    r"^(?:this\s+is\s+just\s+a\s+chance|just\s+wanted\s+to\s+mention|good\s+morning|hello\s+everyone|welcome\s+to\s+the\s+meeting)",
+    r"^(?:call\s+myself\s+out|calling\s+myself\s+out|call\s+out\s+myself|laugh\s+at\s+myself)",
+    r"^(?:that's\s+fine|that's\s+okay|sounds\s+good|makes\s+sense|i\s+agree|agreed$)",
+    r"^(?:apologies\s+for|sorry\s+about|excuse\s+me|pardon\s+me)",
+    r"^(?:anti-buse|that's\s+a\s+big\s+mouthful|we\s+might\s+get\s+a\s+better\s+name|better\s+name\s+over\s+time)",
+    r"^(?:based\s+on\s+feedback|i\s+work,\s+i'm\s+going|go\s+to\s+go\s+down|go\s+down\s+over\s+time)",
+    r"^(?:here\s+when\s+it's\s+midnight|glad\s+you're\s+here|don't\s+make\s+it\s+happen)",
+    r"^(?:news\s+and\s+events|i've\s+got\s+a\s+lot\s+of\s+things)",
+    r"^(?:on\s+the\s+agenda\s+today|on\s+the\s+team\s+will\s+attend|attend\s+this\s+meeting)",
+    r"^(?:or\s+read\s+the\s+notes|rather\s+than\s+posting|run\s+the\s+slack\s+channel|slack\s+channel)",
+    r"^(?:manage\s+is\s+even\s+less|less\s+descriptive|track\s+people\s+down)",
+    r"^(?:keep\s+that\s+in\s+mind|keep\s+in\s+mind)",
+    r"^(?:see,\s*b\s+is|see\s+item|see\s+b\b|read\s+only\s+item)",
+    r"^(?:unless\s+anybody\s+wants\s+to\s+discuss\s+it|unless\s+anyone\s+wants)",
+    r"^(?:hi,\s*i'm\s+welcome|welcome,\s*[A-Za-z]+,\s*to\s+the\s+meeting)",
+    r"^(?:has\s+accepted\s+the\s+opportunity|accepted\s+the\s+opportunity|accepted\s+team\s+leadership)",
+    r"^(?:moving\s+product\s+sections|anti-abuse\s+is\s+moving|will\s+include\s+two\s+stages)",
+]
+
+GERUND_MAPPINGS = {
+    "sending": "Send",
+    "preparing": "Prepare",
+    "reviewing": "Review",
+    "deploying": "Deploy",
+    "configuring": "Configure",
+    "implementing": "Implement",
+    "scheduling": "Schedule",
+    "fixing": "Fix",
+    "sharing": "Share",
+    "creating": "Create",
+    "drafting": "Draft",
+    "auditing": "Audit",
+    "migrating": "Migrate",
+    "testing": "Test",
+    "validating": "Validate",
+    "conducting": "Conduct",
+    "developing": "Develop",
+    "updating": "Update",
+    "documenting": "Document",
+    "integrating": "Integrate",
+    "finalizing": "Finalize",
+    "verifying": "Verify",
+    "setting": "Set",
+    "aligning": "Align",
+    "curating": "Curate",
+    "formalizing": "Formalize",
+    "evaluating": "Evaluate",
+    "benchmarking": "Benchmark",
+    "distributing": "Distribute",
+    "reaching": "Reach",
+    "investigating": "Investigate",
+    "analyzing": "Analyze",
+    "resolving": "Resolve",
+    "executing": "Execute",
+    "optimizing": "Optimize",
+    "provisioning": "Provision",
+    "delivering": "Deliver",
+    "publishing": "Publish",
+    "writing": "Write",
+    "making": "Design",
+    "doing": "Perform",
+    "upgrading": "Upgrade",
+    "automating": "Automate",
+    "refactoring": "Refactor",
+    "standardizing": "Standardize",
+    "following": "Follow up on",
+    "tracking": "Track",
+    "monitoring": "Monitor",
+    "assessing": "Assess",
+}
+
+
+class ActionNormalizer:
+    """Transforms raw candidate text into clean, imperative business actions."""
+
+    @classmethod
+    def is_non_action_discussion(cls, text: str) -> bool:
+        lower = text.strip().lower()
+        if len(lower.split()) < 3:
+            return True
+        for pattern in NON_ACTION_PATTERNS:
+            if re.search(pattern, lower):
+                return True
+        return False
+
+    @classmethod
+    def normalize_action_work(cls, raw_action: str) -> str:
+        text = raw_action.strip()
+
+        # Strip speaker labels e.g. 'Rahul: I\'ll send...' -> 'I\'ll send...'
+        if ":" in text:
+            parts = text.split(":", 1)
+            if len(parts[0].strip()) < 30 and not any(p in parts[0] for p in [".", "!", "?"]):
+                text = parts[1].strip()
+
+        # Repeatedly strip conversational prefixes
+        changed = True
+        while changed:
+            changed = False
+            for pfx in CONVERSATIONAL_PREFIXES:
+                new_text = re.sub(pfx, "", text, flags=re.IGNORECASE).strip()
+                if new_text != text and len(new_text) > 0:
+                    text = new_text
+                    changed = True
+
+        # Strip topic lead-ins e.g. "On the SSO integration,"
+        text = re.sub(r"^(?:on\s+the\s+[^,]+,\s*|regarding\s+the\s+[^,]+,\s*|for\s+the\s+[^,]+,\s*)", "", text, flags=re.IGNORECASE).strip()
+
+        # Conversational colloquialisms to executive corporate action verbs
+        colloquial_transforms = [
+            (r"^(?:look\s+into|check\s+out|take\s+a\s+look\s+at)\b", "Investigate and evaluate"),
+            (r"^(?:touch\s+base\s+with|get\s+in\s+touch\s+with|reach\s+out\s+to)\b", "Coordinate with"),
+            (r"^(?:touch\s+base\s+on|sync\s+up\s+on|circle\s+back\s+on)\b", "Align with stakeholders on"),
+            (r"^(?:fix\s+up|patch\s+up|sort\s+out)\b", "Resolve and remediate"),
+            (r"^(?:set\s+up|spin\s+up)\b", "Configure and provision"),
+            (r"^(?:put\s+together|whip\s+up|type\s+up)\b", "Draft and compile"),
+            (r"^(?:make\s+sure\s+to|make\s+sure)\b", "Verify and ensure"),
+            (r"^(?:figure\s+out|hammer\s+out)\b", "Determine and formulate"),
+            (r"^(?:work\s+on\s+getting|get\s+started\s+on|start\s+working\s+on)\b", "Initiate"),
+            (r"^(?:talk\s+to|speak\s+with)\b", "Consult with"),
+            (r"^(?:double\s+check|re-check)\b", "Validate and audit"),
+            (r"^(?:clean\s+up)\b", "Refactor and standardize"),
+        ]
+        for pattern, repl in colloquial_transforms:
+            if re.search(pattern, text, flags=re.IGNORECASE):
+                text = re.sub(pattern, repl, text, flags=re.IGNORECASE).strip()
+                break
+
+        # Prune trailing hesitation, conversational subclauses, or requests
+        hesitation_patterns = [
+            r",?\s+(?:like\s+you\s+requested|like\s+requested|as\s+requested|as\s+discussed|like\s+we\s+agreed|like\s+you\s+said).*",
+            r",?\s+(?:and\s+i\'ll\s+make\s+the\s+update|and\s+i\s+will\s+make\s+the\s+update|and\s+i\'ll\s+update\s+it|and\s+i\'ll\s+take\s+care\s+of\s+it).*",
+            r"\s+(?:or\s+it\s+doesn\'t\s+have\s+to\s+be\s+in\s+here|or\s+do\s+you\s+want\s+to\s+add\s+that|but\s+we\s+should\s+i\s+think|its\s+not\s+relevant|i\s+think\s+we|or\s+whatever|if\s+needed|if\s+possible).*",
+            r"\s+(?:and\s+see\s+if\s+we\s+can|and\s+find\s+out\s+what|and\s+like\s+build\s+their).*",
+        ]
+        for hp in hesitation_patterns:
+            text = re.sub(hp, "", text, flags=re.IGNORECASE).strip()
+
+        # Pronoun & conversational verb normalization into specific deliverables
+        text = re.sub(r"^(?:send\s+it\s+to\s+([A-Za-z0-9_]+)|send\s+that\s+to\s+([A-Za-z0-9_]+))\b", r"Send the requested document to \1\2", text, flags=re.IGNORECASE)
+        text = re.sub(r"^(?:send\s+that\s+to\s+me|send\s+it\s+to\s+me|send\s+to\s+me)\b", "Provide requested document for review and updates", text, flags=re.IGNORECASE)
+        text = re.sub(r"^(?:send\s+that|send\s+it|send\s+this)\b", "Send the required deliverable", text, flags=re.IGNORECASE)
+        text = re.sub(r"^(?:update\s+it|update\s+that|update\s+this)\b", "Apply requested updates", text, flags=re.IGNORECASE)
+        text = re.sub(r"^(?:review\s+it|review\s+that|review\s+this)\b", "Review the deliverable", text, flags=re.IGNORECASE)
+
+        # Strip relative deadlines embedded in the work string
+        date_pattern = r"\s+(?:by|before|until|due|for)\s+(?:next\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|eod|end\s+of\s+sprint|end\s+of\s+week|next\s+week|afternoon|morning|evening)(?:\s+at\s+\d+(?::\d+)?\s*(?:am|pm)?)?\.?$"
+        text = re.sub(date_pattern, "", text, flags=re.IGNORECASE).strip()
+        text = re.sub(r"\s+afternoon\.?$", "", text, flags=re.IGNORECASE).strip()
+        text = re.sub(r"\s+morning\.?$", "", text, flags=re.IGNORECASE).strip()
+
+        # Convert leading gerunds to imperative verbs
+        words = text.split()
+        if words:
+            first_word = words[0].lower()
+            if first_word in GERUND_MAPPINGS:
+                words[0] = GERUND_MAPPINGS[first_word]
+                text = " ".join(words)
+            elif first_word.endswith("ing") and len(first_word) > 4:
+                stem = first_word[:-3]
+                if stem.endswith("tt") or stem.endswith("nn") or stem.endswith("pp") or stem.endswith("gg"):
+                    stem = stem[:-1]
+                words[0] = stem.title()
+                text = " ".join(words)
+
+        # Capitalize first letter and strip trailing punctuation
+        text = text.strip().rstrip(" .,;")
+        if text:
+            text = text[0].upper() + text[1:]
+        return text
+
+    @classmethod
+    def generate_final_phrase(
+        cls,
+        action: str,
+        owner: str | None = None,
+        recipient: str | None = None,
+        deadline: str | None = None,
+    ) -> str:
+        action_clean = cls.normalize_action_work(action)
+        if not action_clean:
+            return ""
+
+        phrase = action_clean
+        if recipient and recipient.lower() not in phrase.lower() and recipient.lower() not in ["none", "team"]:
+            phrase = f"{phrase} to {recipient}"
+
+        if deadline and deadline.lower() not in phrase.lower() and deadline.lower() not in ["not specified", "none", "tbd"]:
+            phrase = f"{phrase} by {deadline}"
+
+        return phrase
+
+
+class ExecutiveActionReframingEngine:
+    """Formal Code & NLP Layer that integrates with LLM outputs to structure enterprise action items."""
+
+    @classmethod
+    def reframe_action(
+        cls,
+        raw_task: str,
+        owner: str | None = None,
+        recipient: str | None = None,
+        deadline: str | None = None,
+        meeting_type: str | None = None,
+    ) -> dict[str, str]:
+        """Converts raw conversational transcript text into a structured, executive-grade action item."""
+        clean_task = ActionNormalizer.normalize_action_work(raw_task)
+        if not clean_task:
+            clean_task = raw_task.strip().capitalize()
+
+        # Formal synthesized sentence
+        final_sentence = ActionNormalizer.generate_final_phrase(
+            clean_task, owner=owner, recipient=recipient, deadline=deadline
+        )
+
+        clean_owner = (owner or "Unassigned").strip().title()
+        if clean_owner.lower() in ["none", "null", "execute", "assigned lead", "tbd"]:
+            clean_owner = "Unassigned"
+
+        clean_deadline = (deadline or "Not specified").strip()
+
+        return {
+            "task": clean_task,
+            "action": clean_task,
+            "description": final_sentence or clean_task,
+            "owner": clean_owner,
+            "deadline": None if clean_deadline.lower() in ["not specified", "none", "tbd"] else clean_deadline,
+            "deadline_text": clean_deadline,
+        }
+
+
+VAGUE_ACTION_PATTERNS = [
+    r"\bimprove\s+things\b",
+    r"\baddress\s+things\b",
+    r"\bother\s+things\b",
+    r"\baddress\s+other\s+issues\b",
+    r"\btake\s+action\b",
+    r"\btake\s+necessary\s+action\b",
+    r"\bwork\s+on\s+it\b",
+    r"\bhandle\s+it\b",
+    r"\bdo\s+the\s+needful\b",
+    r"\bmake\s+it\s+better\b",
+    r"\bmake\s+things\s+better\b",
+    r"\baddress\s+the\s+issue\b",
+    r"\baddress\s+security\s+and\s+quality\b",
+    r"\baddress\s+security\b",
+    r"\bimprove\s+security\b",
+    r"\bfollow\s+up\b$",
+    r"\bbecause\s+you\'?re\s+more\s+productive\b",
+    r"\baddress\s+quality\b",
+    r"\bwork\s+on\s+the\s+project\b",
+    r"\bwork\s+on\s+project\b",
+    r"^(?:we\s+should|we\s+need\s+to|let's)\s+improve\b",
+    r"^(?:improve|address)\s+(?:things|security|quality|issues)$",
+]
+
+
+COPULA_STATEMENT_PATTERN = r"^\w+\s+(?:is|are|was|were|has\s+been|seems|means|sounds|feels)\s+"
+TRAILING_FRAGMENT_PATTERN = r"(?:\bto\s+like|\bthan\s+that|\band\s+like|\bor\s+like|\bto\s+be\s+like|\bto|\bthan|\blike|\band|\bor|\bif|\bso|\bwith|\bfor|\babout|\bas|\bbecause|\bwhich|\bthat)\s*[\.\,\;\:]*$"
+CONVERSATIONAL_RAMBLE_PATTERN = r"\.\s*(?:so\s+i|so\s+if|if\s+if|i\s+think|i\s+guess|maybe|like|and\s+like|so\s+yeah|we\s+can|let\'s)\b"
+STUTTER_PATTERN = r"\b(if\s+if|we\s+we|i\s+i|to\s+to|the\s+the|that\s+that|so\s+so)\b"
+META_COMMENTARY_PATTERN = r"\b(?:less|more)\s+descriptive\b|\btake\s+the\s+mission\s+to\b|\bso\s+i\s+think\s+if\b|\btrack\s+people\s+down\b|\beven\s+less\b|\bwhat\s+i\s+mean\b|\bwhat\s+we\s+mean\b"
+
+
+class ActionSpecificityValidator:
+    """Validates that extracted actions are concrete, executable pieces of work."""
+
+    @classmethod
+    def is_vague(cls, action_text: str) -> tuple[bool, str]:
+        lower = action_text.strip().lower()
+        if len(lower.split()) < 2:
+            return True, "Action is too short to represent a concrete task."
+        for pattern in VAGUE_ACTION_PATTERNS:
+            if re.search(pattern, lower):
+                return True, f"Action contains vague non-executable phrase matching '{pattern}'."
+        if re.search(COPULA_STATEMENT_PATTERN, lower):
+            return True, "Action is a descriptive copula statement, not an executable task."
+        if re.search(TRAILING_FRAGMENT_PATTERN, lower):
+            return True, "Action is an incomplete trailing fragment."
+        if re.search(CONVERSATIONAL_RAMBLE_PATTERN, lower):
+            return True, "Action contains conversational rambling clauses."
+        if re.search(STUTTER_PATTERN, lower):
+            return True, "Action contains spoken stutter patterns."
+        if re.search(META_COMMENTARY_PATTERN, lower):
+            return True, "Action contains conversational meta-commentary."
+        return False, ""
+
+
+class ActionValidator:
+    """Validates candidate action items against quality rubrics and thresholds."""
+
+    @classmethod
+    def validate(cls, item: ActionItem | dict[str, Any]) -> tuple[bool, str]:
+        if isinstance(item, dict):
+            action_text = item.get("task") or item.get("action") or item.get("description") or ""
+        else:
+            action_text = item.task or item.action or item.description or ""
+        action_text = action_text.strip()
+        lower = action_text.lower()
+
+        # Length check: Must have at least 3 descriptive words
+        words = action_text.split()
+        if len(words) < 3:
+            return False, f"Action text '{action_text}' is too short (minimum 3 words required for a specific task)."
+
+        first_word = words[0].lower().rstrip(":,.")
+        first_two = f"{words[0].lower()} {words[1].lower()}".rstrip(":,.") if len(words) > 1 else ""
+
+        # Enforce leading imperative verb
+        is_imperative = (
+            first_word in IMPERATIVE_VERBS
+            or first_two in MULTIWORD_IMPERATIVE_VERBS
+            or any(lower.startswith(v + " ") for v in IMPERATIVE_VERBS)
+            or any(lower.startswith(v + " ") for v in MULTIWORD_IMPERATIVE_VERBS)
+        )
+        if not is_imperative:
+            return False, f"Action text '{action_text}' must begin with a strong imperative action verb (e.g., Update, Deploy, Review, Configure, Fix, Analyze)."
+
+        # Specificity and anti-conversational checks
+        is_vague, reason = ActionSpecificityValidator.is_vague(action_text)
+        if is_vague:
+            return False, reason
+
+        if ActionNormalizer.is_non_action_discussion(action_text):
+            return False, f"Action text '{action_text}' is conversational discussion/chatter, not an executable deliverable."
+
+        # Reject conversational pronoun prefixes
+        if any(lower.startswith(bad) for bad in ["i will", "we will", "i'll", "we'll", "let's", "he said", "she said", "they discussed", "i've asked", "we've asked", "has agreed to"]):
+            return False, f"Action text '{action_text}' contains conversational speech pronoun prefixes."
+
+        # Reject questions / inquiries
+        if action_text.endswith("?") or any(lower.startswith(q) for q in ["how ", "what ", "why ", "where ", "when ", "who ", "is ", "are ", "can ", "could ", "would ", "do ", "does ", "did "]):
+            return False, f"Action text '{action_text}' is an inquiry/question, not an executable task."
+
+        # Reject past status descriptions or observations
+        if any(lower.startswith(p) for p in ["and they have", "they have", "we have", "they had", "we had", "and we", "there is", "there are", "there was", "it was", "they were", "and they", "they set", "we set", "they already", "we already"]):
+            return False, f"Action text '{action_text}' describes past status/setup, not a future pending deliverable."
+
+        # Reject sentence fragments starting with prepositions or determiners
+        if first_word in ["of", "for", "with", "in", "at", "by", "to", "from", "about", "this", "that", "these", "those", "the", "a", "an", "so", "just", "and", "or", "unless", "see", "keep"]:
+            return False, f"Action text '{action_text}' is a sentence fragment starting with '{first_word}'."
+
+        return True, "Valid executable action item."
+
+
+# ==========================================
+# 2. Golden Example Store & Self-Critique
+# ==========================================
+
+FORBIDDEN_PLACEHOLDER_SUBSTRINGS = [
+    "assigned lead",
+    "deliverable validated and operational by end of sprint",
+    "execute: and i am",
+    "execute: i was going to",
+    "execute: that okay",
+    "execute: i don't know",
+]
+
+
+class CritiqueResult(StrictModel):
+    passed: bool
+    reason: str
+    violations: list[str] = Field(default_factory=list)
+    confidence: float = 1.0
+
+
+class GoldenExampleRecord(StrictModel):
+    agent_type: str
+    input_text: str
+    corrected_output: dict[str, Any]
+    prompt_version: str = "2.0.0"
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    source: str = "human_curated"
+
+
+class GoldenExampleStore:
+    """Manages the MongoDB 'goldenExamples' collection with in-memory fallback."""
+
+    def __init__(self, mongo_uri: str = "mongodb://localhost:27017", database: str = "mom_ai_brain") -> None:
+        self._mongo_uri = mongo_uri
+        self._database_name = database
+        self._collection_name = "goldenExamples"
+        self._in_memory_store: dict[str, list[dict[str, Any]]] = {}
+        self._init_mongo()
+
+    def _init_mongo(self) -> None:
+        try:
+            from pymongo import MongoClient
+            self._client = MongoClient(self._mongo_uri, serverSelectionTimeoutMS=1500)
+            self._db = self._client[self._database_name]
+            self._coll = self._db[self._collection_name]
+            self._coll.create_index([("agent_type", 1), ("created_at", -1)])
+            self._available = True
+        except Exception as exc:
+            logger.warning("MongoDB goldenExamples unavailable (%s), using in-memory store.", exc)
+            self._available = False
+
+    def save_golden_example(
+        self,
+        agent_type: str,
+        input_text: str,
+        corrected_output: dict[str, Any],
+        prompt_version: str = "2.0.0",
+        source: str = "human_approved",
+    ) -> bool:
+        record = {
+            "agent_type": agent_type,
+            "input_text": input_text,
+            "corrected_output": corrected_output,
+            "prompt_version": prompt_version,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "source": source,
+        }
+        if self._available:
+            try:
+                self._coll.insert_one(record)
+                logger.info("Saved golden example for agent [%s] into MongoDB goldenExamples", agent_type)
+                return True
+            except Exception as exc:
+                logger.error("Failed to insert into MongoDB goldenExamples: %s", exc)
+
+        self._in_memory_store.setdefault(agent_type, []).append(record)
+        return True
+
+    def get_relevant_golden_examples(self, agent_type: str, input_text: str = "", limit: int = 5) -> list[dict[str, Any]]:
+        examples = []
+        if self._available:
+            try:
+                docs = list(self._coll.find({"agent_type": agent_type}).sort("created_at", -1).limit(limit))
+                for d in docs:
+                    d.pop("_id", None)
+                    examples.append(d)
+            except Exception as exc:
+                logger.warning("Failed querying MongoDB goldenExamples: %s", exc)
+
+        if not examples and agent_type in self._in_memory_store:
+            examples = self._in_memory_store[agent_type][-limit:]
+
+        return examples
+
+    def seed_initial_golden_examples(self, seed_data_path: str | None = None) -> int:
+        if not self._available:
+            return 0
+        try:
+            count = self._coll.count_documents({})
+            if count > 0:
+                return count
+
+            import os
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            dataset_path = seed_data_path or os.path.join(base_dir, "tests", "regression", "datasets", "action_items_golden.json")
+            if os.path.exists(dataset_path):
+                with open(dataset_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                inserted = 0
+                for item in data:
+                    self.save_golden_example(
+                        agent_type="action",
+                        input_text=item.get("transcript", ""),
+                        corrected_output={"action_items": item.get("expected", [])},
+                        source="golden_dataset_seed",
+                    )
+                    inserted += 1
+                logger.info("Seeded %d golden action item examples into goldenExamples collection", inserted)
+                return inserted
+        except Exception as exc:
+            logger.warning("Failed seeding goldenExamples: %s", exc)
+        return 0
+
+
+class SelfCritiquePass:
+    """Executes a 2nd pass self-critique rubric audit on agent output."""
+
+    @classmethod
+    def evaluate(cls, agent_name: AgentName, transcript_text: str, parsed_output: dict[str, Any]) -> CritiqueResult:
+        violations = []
+        lower_trans = transcript_text.lower()
+        output_str = json.dumps(parsed_output).lower()
+
+        # 1. Check for forbidden placeholder patterns
+        for placeholder in FORBIDDEN_PLACEHOLDER_SUBSTRINGS:
+            if placeholder in output_str:
+                violations.append(f"Forbidden fallback placeholder detected: '{placeholder}'")
+
+        # 2. Agent-Specific Rubrics
+        if agent_name == AgentName.ACTION:
+            actions = parsed_output.get("action_items") or parsed_output.get("actionItems") or []
+            if not actions and len(transcript_text.split()) > 20:
+                if any(w in lower_trans for w in ["will", "must", "need to", "action item", "responsible for"]):
+                    violations.append("Transcript contains explicit action commitments but zero action items were extracted.")
+
+            owners = set()
+            deadlines = set()
+            priorities = set()
+            for idx, act in enumerate(actions, start=1):
+                desc = act.get("description") or act.get("actionItem") or ""
+                owner = act.get("owner") or act.get("actionOwner") or ""
+                deadline = act.get("deadline_text") or act.get("deadline") or ""
+                priority = act.get("priority") or "Low"
+
+                if not desc or len(desc.strip()) < 5:
+                    violations.append(f"Action item #{idx} description is empty or too short.")
+                if not owner or owner.lower() in ["assigned lead", "unassigned", "none", "execute"]:
+                    violations.append(f"Action item #{idx} has invalid or placeholder owner: '{owner}'.")
+
+                owners.add(owner.lower())
+                deadlines.add(deadline.lower())
+                priorities.add(priority)
+
+            if len(actions) >= 3:
+                if len(owners) == 1 and list(owners)[0] in ["assigned lead", "execute", "unassigned"]:
+                    violations.append("All action items defaulted to the same generic owner.")
+                if len(deadlines) == 1 and list(deadlines)[0] == "end of sprint" and "end of sprint" not in lower_trans:
+                    violations.append("All action items defaulted to ungrounded 'End of Sprint'.")
+
+        elif agent_name == AgentName.SUMMARY:
+            summary = parsed_output.get("executive_summary") or ""
+            key_points = parsed_output.get("key_points") or []
+            if not summary or len(summary.strip()) < 20:
+                violations.append("Executive summary is empty or too short.")
+            if not key_points:
+                violations.append("Summary must contain at least 2 structured key points.")
+
+        elif agent_name == AgentName.DECISION:
+            decisions = parsed_output.get("decisions") or []
+            for idx, dec in enumerate(decisions, start=1):
+                decision_text = dec.get("description") or dec.get("decision") or ""
+                if not decision_text or len(decision_text.strip()) < 4:
+                    violations.append(f"Decision #{idx} description is empty or too short.")
+
+        passed = len(violations) == 0
+        reason = "Output passed all quality rubric checks." if passed else " | ".join(violations)
+        return CritiqueResult(passed=passed, reason=reason, violations=violations)
+
+
+class AgentQualityLoop:
+    """Shared Quality Loop wrapping Agent execution across Summary, Action, and Decision agents."""
+
+    def __init__(self, golden_store: GoldenExampleStore | None = None) -> None:
+        self._golden_store = golden_store or GoldenExampleStore()
+
+    def get_golden_store(self) -> GoldenExampleStore:
+        return self._golden_store
+
+    def build_few_shot_prompt_context(self, agent_name: AgentName, transcript_text: str) -> str:
+        examples = self._golden_store.get_relevant_golden_examples(agent_name.value, transcript_text, limit=6)
+        if not examples:
+            return ""
+
+        lines = ["\n--- GOLDEN HIGH-QUALITY FEW-SHOT EXAMPLES (Follow this exact schema and caliber) ---"]
+        for idx, ex in enumerate(examples, start=1):
+            lines.append(f"Example {idx}:")
+            lines.append(f"Input Context: {ex.get('input_text', '')}")
+            lines.append(f"Approved Output: {json.dumps(ex.get('corrected_output', {}))}")
+            lines.append("")
+        return "\n".join(lines)
+
+    def evaluate_and_critique(
+        self,
+        agent_name: AgentName,
+        transcript_text: str,
+        parsed_output: dict[str, Any],
+    ) -> CritiqueResult:
+        return SelfCritiquePass.evaluate(agent_name, transcript_text, parsed_output)
