@@ -503,21 +503,23 @@ class AgentOrchestrator:
                 combined_actions = list(actions_out.action_items)
                 combined_decisions = list(decisions_out.decisions)
 
-                # Ensure full coverage across the entire meeting by merging unique NLP commitments
+                # Ensure full coverage across the entire meeting by merging unique valid NLP commitments
                 try:
                     fb_action: ActionOutput = self._get_fallback_output(
                         AgentDefinition(AgentName.ACTION, ActionOutput), contract, understanding.meeting_type
                     )
                     existing_tasks = {a.task.lower().strip() for a in combined_actions if getattr(a, "task", None)}
                     for fb_a in fb_action.action_items:
-                        if fb_a.task.lower().strip() not in existing_tasks:
+                        is_val, _ = ActionValidator.validate(fb_a)
+                        if is_val and fb_a.task.lower().strip() not in existing_tasks:
                             combined_actions.append(fb_a)
                             existing_tasks.add(fb_a.task.lower().strip())
                 except Exception:
                     pass
 
-                # Formal Executive Action Reframing & Standardization Pass
+                # Formal Executive Action Reframing, Strict Specificity Filtering & Deduplication Pass
                 reframed_actions = []
+                seen_tasks = set()
                 for a in combined_actions:
                     raw = a.task or a.action or a.description or ""
                     reframed = ExecutiveActionReframingEngine.reframe_action(
@@ -533,9 +535,16 @@ class AgentOrchestrator:
                     a.owner = reframed["owner"]
                     a.deadline = reframed["deadline"]
                     a.deadline_text = reframed["deadline_text"]
+
+                    # Rigorous Garbage & Vague Item Elimination
+                    is_valid, reason = ActionValidator.validate(a)
+                    if not is_valid:
+                        logger.debug("Filtered non-specific/garbage action candidate '%s': %s", a.task, reason)
+                        continue
+
                     reframed_actions.append(a)
 
-                outputs_dict[AgentName.ACTION] = ActionOutput(action_items=reframed_actions or combined_actions, confidence=actions_out.confidence)
+                outputs_dict[AgentName.ACTION] = ActionOutput(action_items=reframed_actions, confidence=actions_out.confidence)
                 outputs_dict[AgentName.DECISION] = DecisionOutput(decisions=combined_decisions, confidence=decisions_out.confidence)
                 outputs_dict[AgentName.RISK] = RiskOutput(risks=risks_out.risks, blockers=risks_out.blockers, confidence=risks_out.confidence)
                 if summary_out:
@@ -1065,14 +1074,25 @@ class ValidatorAgent:
             missing_fields.append("sentiment.overall")
 
         duplicates: dict[str, int] = {}
-        outputs[AgentName.ACTION] = self._deduplicate_output(
+        raw_actions = self._deduplicate_output(
             outputs,
             AgentName.ACTION,
             ActionOutput,
             "action_items",
-            lambda item: item.description,
+            lambda item: ValidatorAgent._normalize(item.description or item.task or item.action),
             duplicates,
         )
+        if isinstance(raw_actions, ActionOutput):
+            cleaned_actions = [
+                act for act in raw_actions.action_items
+                if ActionValidator.validate(act)[0]
+            ]
+            outputs[AgentName.ACTION] = ActionOutput(
+                action_items=cleaned_actions,
+                confidence=raw_actions.confidence,
+            )
+        else:
+            outputs[AgentName.ACTION] = raw_actions
         outputs[AgentName.DECISION] = self._deduplicate_output(
             outputs,
             AgentName.DECISION,

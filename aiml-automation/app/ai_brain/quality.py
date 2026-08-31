@@ -116,6 +116,7 @@ IMPERATIVE_VERBS = {
     "patch", "debug", "isolate", "reproduce", "benchmark", "stress-test",
     "rollout", "rollback", "deprecate", "decommission", "enable", "disable",
     "sync", "backup", "restore", "clean", "connect", "scale", "spin",
+    "profile", "sanitize", "containerize", "stabilize", "mock", "stub",
     
     # Review, QA & Compliance
     "review", "audit", "test", "validate", "verify", "inspect", "check",
@@ -425,7 +426,11 @@ VAGUE_ACTION_PATTERNS = [
     r"\bwork\s+on\s+the\s+project\b",
     r"\bwork\s+on\s+project\b",
     r"^(?:we\s+should|we\s+need\s+to|let's)\s+improve\b",
-    r"^(?:improve|address)\s+(?:things|security|quality|issues)$",
+    r"^(?:improve|address|fix|update|review|check|handle|manage)\s+(?:things|security|quality|issues|everything|it|this|that|stuff)$",
+    r"^(?:look\s+into|see\s+about|touch\s+base\s+on|track\s+down)\s+(?:things|it|this|that|them|stuff)$",
+    r"^(?:investigate\s+and\s+evaluate|validate\s+and\s+audit)\s+(?:it|this|that|them|things|stuff)$",
+    r"^(?:glad\s+you|welcome\s+to|thanks\s+for|talk\s+soon|bye\s+everyone|hello\s+everyone)",
+    r"^(?:see\s+item|read\s+only|on\s+the\s+agenda|keep\s+in\s+mind|keep\s+that\s+in\s+mind)",
 ]
 
 
