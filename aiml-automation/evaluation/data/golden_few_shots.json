@@ -1,0 +1,42 @@
+[
+  {
+    "id": "sum_01",
+    "meeting_title": "Executive Meeting Review",
+    "meeting_type": "general",
+    "transcript": "Alex: We reviewed the Q3 financial forecast and confirmed our budget targets. Priya: Marketing campaign performance exceeded expectations by 20%. David: We need to hire 3 senior engineers for cloud migration.",
+    "expected_summary": {
+      "executive_summary": "The executive team reviewed Q3 financial forecasts and confirmed budget allocations. Marketing initiatives outperformed projections by 20%, while headcount planning was approved to recruit 3 senior cloud engineers.",
+      "key_points": [
+        "Q3 financial forecast confirmed within budget targets",
+        "Marketing campaign delivered 20% over-performance",
+        "Approved recruitment of 3 senior cloud engineers"
+      ]
+    },
+    "expected_actions": [],
+    "expected_decisions": [],
+    "expected_risks": [],
+    "expected_topics": [],
+    "domain_tags": [],
+    "metadata": {}
+  },
+  {
+    "id": "sum_02",
+    "meeting_title": "Executive Meeting Review",
+    "meeting_type": "general",
+    "transcript": "CTO: Today we are aligning on the PostgreSQL 16 database migration. Lead Dev: Staging dry run succeeded with zero data loss. Security Lead: Penetration test found no critical CVEs.",
+    "expected_summary": {
+      "executive_summary": "Engineering leadership aligned on the upcoming PostgreSQL 16 database migration following a successful staging test with zero data loss. Security audits confirmed no critical vulnerabilities.",
+      "key_points": [
+        "PostgreSQL 16 migration approved for production",
+        "Staging validation passed with zero data loss",
+        "Security penetration audit verified clean"
+      ]
+    },
+    "expected_actions": [],
+    "expected_decisions": [],
+    "expected_risks": [],
+    "expected_topics": [],
+    "domain_tags": [],
+    "metadata": {}
+  }
+]
