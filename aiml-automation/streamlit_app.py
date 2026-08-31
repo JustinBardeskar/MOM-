@@ -542,15 +542,47 @@ def display_mom_results(result: dict):
                 st.caption("No open questions recorded.")
 
         with c2:
-            st.markdown("#### 🎭 Sentiment & Meeting Dynamics")
-            st.markdown(f"- **Overall Tone:** `{sentiment.get('overall', 'Collaborative / Neutral')}`")
-            st.markdown(f"- **Team Mood:** `{sentiment.get('team_mood', 'Productive')}`")
+            st.markdown("#### 🎭 Sentiment & Meeting Dynamics Intelligence")
+            tone = sentiment.get("overall", "Constructive & Professional")
+            c_mood = sentiment.get("client_mood", "Engaged & Aligned")
+            t_mood = sentiment.get("team_mood", "Focused on Execution")
+            pol_score = sentiment.get("polarity_score", 0.75)
+            eng_lvl = sentiment.get("engagement_level", "High")
+            frictions = sentiment.get("friction_points", [])
+            alignments = sentiment.get("alignment_signals", [])
+            speaker_sentiments = sentiment.get("speaker_sentiments", {})
+            shifts = sentiment.get("chronological_shifts", [])
+
+            st.markdown(f"- **Executive Tone:** `{tone}`")
+            st.markdown(f"- **Polarity Index:** `{'📈 +' if pol_score >= 0 else '📉 '}{pol_score:.2f}` &nbsp;|&nbsp; **Engagement:** `{eng_lvl}`")
+            st.markdown(f"- **Client Posture:** `{c_mood}`")
+            st.markdown(f"- **Team Morale:** `{t_mood}`")
+
+            if frictions:
+                st.markdown("##### ⚠️ Friction & Tension Signals")
+                for fr in frictions:
+                    st.markdown(f"- 🔴 *{fr}*")
+
+            if alignments:
+                st.markdown("##### 🤝 Consensus & Alignment Signals")
+                for al in alignments:
+                    st.markdown(f"- 🟢 *{al}*")
+
+            if speaker_sentiments:
+                st.markdown("##### 👥 Participant Tone Dispositions")
+                for spk, mood in speaker_sentiments.items():
+                    st.markdown(f"- **{spk}:** `{mood}`")
+
+            if shifts:
+                st.markdown("##### ⏱️ Chronological Sentiment Shifts")
+                for sh in shifts:
+                    st.markdown(f"- 🔹 {sh}")
 
             follow_ups = result.get("follow_up_tasks", [])
             if follow_ups:
                 st.markdown("#### 🔄 Follow-Up Workstreams")
                 for f in follow_ups:
-                    st.markdown(f"- 🔄 {f.get('task')}")
+                    st.markdown(f"- 🔄 {f.get('task') or f.get('description')}")
 
     # TAB 6: CONTEXT WINDOW & TOKEN ALLOCATION EXPLORER
     with out_tab_ctx:

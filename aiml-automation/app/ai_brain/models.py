@@ -350,8 +350,27 @@ class SentimentOutput(StrictModel):
     overall: str = "Constructive & Professional"
     client_mood: str = "Engaged & Aligned"
     team_mood: str = "Focused on Execution"
+    polarity_score: float = Field(default=0.75, ge=-1.0, le=1.0)
+    engagement_level: str = "High"
+    friction_points: list[str] = Field(default_factory=list)
+    alignment_signals: list[str] = Field(default_factory=list)
+    speaker_sentiments: dict[str, str] = Field(default_factory=dict)
+    chronological_shifts: list[str] = Field(default_factory=list)
     evidence: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.92, ge=0, le=1)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_sentiment(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "sentiment" in data and "overall" not in data:
+                data["overall"] = data.pop("sentiment")
+            if "score" in data and "polarity_score" not in data:
+                try:
+                    data["polarity_score"] = float(data.pop("score"))
+                except Exception:
+                    pass
+        return data
 
 
 class Topic(StrictModel):

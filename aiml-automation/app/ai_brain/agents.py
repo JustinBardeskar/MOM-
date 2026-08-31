@@ -60,6 +60,7 @@ from app.ai_brain.quality import (
     ActionValidator,
     AgentQualityLoop,
     ExecutiveActionReframingEngine,
+    ExecutiveSentimentAnalyzer,
 )
 from app.domain import PipelineStage
 from app.integration import StageReporter
@@ -899,13 +900,7 @@ class AgentOrchestrator:
             return RiskOutput(risks=risks[:4], blockers=blockers[:3], confidence=0.88)
 
         elif definition.name == AgentName.SENTIMENT:
-            return SentimentOutput(
-                overall="Constructive",
-                client_mood="Engaged & Solution-Focused",
-                team_mood="Collaborative & Aligned",
-                evidence=[lines[0] if lines else "Active engagement on deliverables"],
-                confidence=0.88,
-            )
+            return ExecutiveSentimentAnalyzer.analyze_transcript(transcript_text)
         elif definition.name == AgentName.TOPIC:
             topics: list[Topic] = []
             for line in lines:

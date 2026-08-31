@@ -348,10 +348,17 @@ class PromptManager:
             AgentName.SENTIMENT: PromptTemplate(
                 agent=AgentName.SENTIMENT,
                 version=version,
-                objective="Assess client and team mood using transcript evidence.",
+                objective="Assess client and team mood, tension points, alignment signals, and chronological emotional shifts.",
                 rules=[
-                    "Evaluate overall tone: 'Constructive', 'Positive', 'Tense', 'Cautious', or 'Neutral'.",
-                    "Provide specific quotes and verbatim transcript evidence supporting the assessment.",
+                    "Evaluate 'overall' tone: e.g. 'Constructive & Professional', 'Collaborative & High-Morale', 'Cautious with Initial Skepticism', or 'Tense with Resolving Alignment'.",
+                    "Determine 'client_mood' and 'team_mood' based on conversational dynamics and commitment confidence.",
+                    "Calculate 'polarity_score' from -1.0 (extremely negative/conflict-ridden) to +1.0 (enthusiastic/fully aligned).",
+                    "Assess 'engagement_level' as 'High', 'Moderate', or 'Low'.",
+                    "Identify 'friction_points': Concrete concerns, timeline pushbacks, skepticism, or operational bottlenecks raised by participants.",
+                    "Identify 'alignment_signals': Unanimous agreements, enthusiastic approvals, and shared commitments.",
+                    "Map 'speaker_sentiments': For each active participant, provide a 2-4 word executive tone summary (e.g. {'Sarah': 'Confident & Solution-Oriented', 'David': 'Analytical & Methodical'}).",
+                    "Trace 'chronological_shifts': Summarize emotional and alignment progression across Opening, Mid-discussion, and Closing phases.",
+                    "Provide specific quotes and verbatim transcript 'evidence' supporting the assessment.",
                 ],
             ),
             AgentName.TOPIC: PromptTemplate(

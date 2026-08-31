@@ -629,14 +629,41 @@ def generate_corporate_pdf(mom_data: dict[str, Any] | Any) -> bytes:
     # 9. Sentiment & Meeting Dynamics Analysis
     if sentiment:
         story.append(Spacer(1, 3))
-        story.append(Paragraph("7. Meeting Tone & Dynamics Alignment", h2_style))
+        story.append(Paragraph("7. Meeting Tone & Sentiment Dynamics Intelligence", h2_style))
         tone = _clean_pdf_text(sentiment.get("overall", "Constructive & Professional"))
         c_mood = _clean_pdf_text(sentiment.get("client_mood", "Engaged & Aligned"))
         t_mood = _clean_pdf_text(sentiment.get("team_mood", "Focused on Execution"))
+        pol_score = sentiment.get("polarity_score", 0.75)
+        eng_level = _clean_pdf_text(sentiment.get("engagement_level", "High"))
+        frictions = sentiment.get("friction_points", [])
+        alignments = sentiment.get("alignment_signals", [])
+        speaker_sentiments = sentiment.get("speaker_sentiments", {})
+        shifts = sentiment.get("chronological_shifts", [])
         evidence = sentiment.get("evidence", [])
 
-        story.append(Paragraph(f"• <b>Overall Climate:</b> {tone} &nbsp;|&nbsp; <b>Client Posture:</b> {c_mood} &nbsp;|&nbsp; <b>Team Dynamics:</b> {t_mood}", body_style))
-        if evidence:
+        story.append(Paragraph(f"• <b>Executive Climate:</b> {tone} &nbsp;|&nbsp; <b>Polarity Index:</b> {pol_score:+.2f} &nbsp;|&nbsp; <b>Engagement:</b> {eng_level}", body_style))
+        story.append(Paragraph(f"• <b>Client Posture:</b> {c_mood} &nbsp;|&nbsp; <b>Team Morale:</b> {t_mood}", body_style))
+
+        if frictions:
+            story.append(Paragraph("• <b>Key Friction / Tension Signals:</b>", body_style))
+            for fr in frictions[:3]:
+                story.append(Paragraph(f"  - <i>{_clean_pdf_text(fr)}</i>", body_style))
+
+        if alignments:
+            story.append(Paragraph("• <b>Consensus & Alignment Signals:</b>", body_style))
+            for al in alignments[:3]:
+                story.append(Paragraph(f"  - <i>{_clean_pdf_text(al)}</i>", body_style))
+
+        if speaker_sentiments:
+            spk_parts = [f"<b>{_clean_pdf_text(spk)}:</b> {_clean_pdf_text(mood)}" for spk, mood in list(speaker_sentiments.items())[:5]]
+            story.append(Paragraph(f"• <b>Participant Dispositions:</b> {' | '.join(spk_parts)}", body_style))
+
+        if shifts:
+            story.append(Paragraph("• <b>Chronological Dynamics Evolution:</b>", body_style))
+            for sh in shifts[:3]:
+                story.append(Paragraph(f"  - {_clean_pdf_text(sh)}", body_style))
+
+        if evidence and not frictions and not alignments:
             for ev in evidence[:2]:
                 story.append(Paragraph(f"  <i>Supporting Evidence: \"{_clean_pdf_text(ev)}\"</i>", body_style))
 
