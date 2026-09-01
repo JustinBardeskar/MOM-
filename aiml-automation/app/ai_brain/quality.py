@@ -403,6 +403,45 @@ class ExecutiveActionReframingEngine:
             "deadline_text": clean_deadline,
         }
 
+    @classmethod
+    def synthesize_action_summary(
+        cls,
+        actions: list[Any],
+        meeting_theme: str | None = None,
+    ) -> str:
+        """Synthesizes a short, high-impact 1-line executive summary of what the core actions are."""
+        valid_items = []
+        for a in actions:
+            if isinstance(a, dict):
+                t = (a.get("task") or a.get("action") or a.get("description") or "").strip()
+                o = (a.get("owner") or "").strip()
+                d = (a.get("deadline") or a.get("deadline_text") or "").strip()
+            else:
+                t = (getattr(a, "task", "") or getattr(a, "action", "") or getattr(a, "description", "") or "").strip()
+                o = (getattr(a, "owner", "") or "").strip()
+                d = (getattr(a, "deadline", "") or getattr(a, "deadline_text", "") or "").strip()
+
+            if t and len(t.split()) >= 2:
+                valid_items.append((t, o, d))
+
+        if not valid_items:
+            return "No pending post-meeting deliverables were assigned in this discussion."
+
+        if len(valid_items) == 1:
+            task, owner, dl = valid_items[0]
+            owner_part = f"{owner} to " if owner and owner.lower() not in ["unassigned", "not specified", "none"] else ""
+            dl_part = f" by {dl}" if dl and dl.lower() not in ["not specified", "none"] else ""
+            return f"Key Commitment: {owner_part}{task.rstrip('.')}{dl_part}."
+
+        # Multiple items: synthesize top commitments concisely
+        summaries = []
+        for task, owner, dl in valid_items[:3]:
+            owner_part = f"{owner}: " if owner and owner.lower() not in ["unassigned", "not specified", "none"] else ""
+            dl_part = f" (by {dl})" if dl and dl.lower() not in ["not specified", "none"] else ""
+            summaries.append(f"{owner_part}{task.rstrip('.')}{dl_part}")
+
+        return f"Key Commitments: {'; '.join(summaries)}."
+
 
 VAGUE_ACTION_PATTERNS = [
     r"\bimprove\s+things\b",
@@ -425,6 +464,15 @@ VAGUE_ACTION_PATTERNS = [
     r"\baddress\s+quality\b",
     r"\bwork\s+on\s+the\s+project\b",
     r"\bwork\s+on\s+project\b",
+    r"\bshare\s+one\s+thing\b",
+    r"\bshow\s+one\s+thing\b",
+    r"\bshare\s+my\s+screen\b",
+    r"\bshow\s+my\s+screen\b",
+    r"\bshare\s+your\s+screen\b",
+    r"\bshow\s+your\s+screen\b",
+    r"^(?:share|show|say|tell|mention|give|point\s+out|bring\s+up|highlight)\s+(?:one\s+thing|a\s+thing|something|some\s+things|a\s+couple\s+of\s+things|a\s+few\s+things|anything|my\s+screen|your\s+screen|it|this|that)$",
+    r"^(?:take|have)\s+a\s+look\b",
+    r"^(?:let\s+me|allow\s+me\s+to|i\s+want\s+to)\s+(?:share|show|tell|say)\b",
     r"^(?:we\s+should|we\s+need\s+to|let's)\s+improve\b",
     r"^(?:improve|address|fix|update|review|check|handle|manage)\s+(?:things|security|quality|issues|everything|it|this|that|stuff)$",
     r"^(?:look\s+into|see\s+about|touch\s+base\s+on|track\s+down)\s+(?:things|it|this|that|them|stuff)$",

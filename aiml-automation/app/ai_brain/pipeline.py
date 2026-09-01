@@ -281,6 +281,12 @@ class AIBrainPipeline:
             meeting_type=meeting_type_val,
         )
 
+        from app.ai_brain.quality import ExecutiveActionReframingEngine
+        synthesized_act_summary = (
+            actions.action_summary
+            or ExecutiveActionReframingEngine.synthesize_action_summary(actions.action_items)
+        )
+
         return MeetingIntelligenceResult(
             version=self._version,
             job_id=contract.job_id,
@@ -295,6 +301,7 @@ class AIBrainPipeline:
             ],
             decisions=decisions.decisions,
             action_items=actions.action_items,
+            action_summary=synthesized_act_summary,
             owners=owners,
             deadlines=deadlines.deadlines,
             risks=risks.risks,

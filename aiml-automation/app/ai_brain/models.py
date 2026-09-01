@@ -266,6 +266,7 @@ class ActionItem(StrictModel):
 class ActionOutput(StrictModel):
     actions: list[ActionItem] = Field(default_factory=list)
     action_items: list[ActionItem] = Field(default_factory=list)
+    action_summary: str | None = None
     confidence: float = Field(default=0.95, ge=0, le=1)
 
     @model_validator(mode="before")
@@ -276,6 +277,10 @@ class ActionOutput(StrictModel):
                 data["action_items"] = data["actions"]
             elif "action_items" in data and not data.get("actions"):
                 data["actions"] = data["action_items"]
+            if "summary" in data and not data.get("action_summary"):
+                data["action_summary"] = data["summary"]
+            elif "actions_summary" in data and not data.get("action_summary"):
+                data["action_summary"] = data["actions_summary"]
         return data
 
     @model_validator(mode="after")
@@ -514,6 +519,7 @@ class MeetingIntelligenceResult(StrictModel):
     participants: list[str]
     decisions: list[Decision]
     action_items: list[ActionItem]
+    action_summary: str | None = None
     owners: list[str]
     deadlines: list[Deadline]
     risks: list[Risk]

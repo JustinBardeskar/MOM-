@@ -306,15 +306,18 @@ class PromptManager:
             ),
             AgentName.ACTION: PromptTemplate(
                 agent=AgentName.ACTION,
-                version="3.0.0",
-                objective="Identify and extract concrete, actionable tasks from the meeting transcript.",
+                version="3.1.0",
+                objective="Identify, reframe, and extract concrete post-meeting tasks and synthesize an executive 1-line action summary.",
                 rules=[
-                    "Extract ONLY concrete pieces of work that someone can actually perform.",
+                    "Extract ONLY real, meaningful post-meeting business deliverables, engineering tasks, or operational assignments.",
+                    "STRICT ANTI-FILLER MANDATE: NEVER extract in-meeting conversational speech transitions as tasks (e.g. DO NOT extract 'Share one thing', 'Show one thing', 'Let me share my screen', 'Point out something', 'Mention one thing', 'Say a few words', 'Give an update', 'Take a look').",
                     "Determine WHO is responsible (owner), WHAT exactly needs to be done (task), WHEN it must be done (deadline), and supporting evidence.",
+                    "Reframe each task into a clear, imperative statement starting with a strong verb (e.g. 'Deploy Redis cluster', 'Submit security audit report', 'Audit database connection pooling').",
+                    "In 'action_summary', provide a single concise 1-sentence executive overview summarizing the primary commitments made across the meeting (e.g. 'Engineering team committed to deploying Redis caching and auditing connection pools ahead of Friday cutoff.').",
                     "If owner is not explicitly identifiable, return null.",
                     "If deadline is not explicitly identifiable, return null.",
                     "Reject vague actions ('Improve things', 'Address security', 'Work on project', 'Follow up', 'Handle it', 'Do the needful').",
-                    "If no concrete action exists, return an empty actions array.",
+                    "If the conversation is casual discussion with no post-meeting work commitments, return an empty actions array: 'action_items': [] and 'action_summary': 'No pending post-meeting deliverables were assigned in this discussion.'",
                 ],
             ),
             AgentName.DECISION: PromptTemplate(

@@ -454,6 +454,21 @@ def generate_corporate_pdf(mom_data: dict[str, Any] | Any) -> bytes:
     story.append(Spacer(1, 3))
     story.append(Paragraph("2. Action Items Matrix (Post-Meeting Tasks & Responsibilities)", h2_style))
     if actions:
+        from app.ai_brain.quality import ExecutiveActionReframingEngine
+        act_summary = (
+            mom_data.get("action_summary")
+            or ExecutiveActionReframingEngine.synthesize_action_summary(actions)
+        )
+        if act_summary:
+            summary_p = Paragraph(f"<b>Executive Action Overview:</b> <i>{_clean_pdf_text(act_summary)}</i>", body_style)
+            act_sum_table = Table([[summary_p]], colWidths=[540])
+            act_sum_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#eff6ff")),
+                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#93c5fd")),
+                ("PADDING", (0, 0), (-1, -1), 4),
+            ]))
+            story.append(act_sum_table)
+            story.append(Spacer(1, 3))
         act_rows = [
             [
                 Paragraph("#", th_style),

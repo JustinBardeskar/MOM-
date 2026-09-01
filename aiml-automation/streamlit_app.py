@@ -394,6 +394,24 @@ def display_mom_results(result: dict):
             if a.get("status", "").lower() != "failed"
         ]
 
+        # Executive 1-Line Action Summary (NLP / Semantic Overview)
+        from app.ai_brain.quality import ExecutiveActionReframingEngine
+        action_summary_text = (
+            result.get("action_summary")
+            or ExecutiveActionReframingEngine.synthesize_action_summary(valid_actions)
+        )
+        st.markdown(
+            f"""
+            <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(147, 51, 234, 0.08)); border-left: 4px solid #3b82f6; border-radius: 8px; padding: 12px 18px; margin-bottom: 16px;">
+                <span style="font-size: 0.82rem; font-weight: 700; color: #60a5fa; text-transform: uppercase; letter-spacing: 0.05em;">⚡ Executive Action Overview (1-Line Summary)</span>
+                <div style="font-size: 1.0rem; color: #f1f5f9; margin-top: 4px; font-weight: 500;">
+                    {action_summary_text}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         if valid_actions:
             # Table View
             table_data = []
