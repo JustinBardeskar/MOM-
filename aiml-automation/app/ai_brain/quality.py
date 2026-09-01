@@ -268,6 +268,13 @@ CONVERSATIONAL_PREFIXES = [
 ]
 
 NON_ACTION_PATTERNS = [
+    r"\?$",
+    r"^(?:won\'?t|isn\'?t|aren\'?t|couldn\'?t|wouldn\'?t|can\s+we|should\s+we|how\s+about|what\s+about|is\s+there)\b",
+    r"^(?:toss\s+that|throw\s+that|drop\s+that)\b",
+    r"^(?:i\'ve\s+sketched|i\'ll\s+screen\s+share|screen\s+share|share\s+my\s+screen|let\s+me\s+share|share\s+them\s+now)\b",
+    r"screen\s*share",
+    r"^(?:tweak\s+colors\s+won\'?t|a\s+smooth\s+release\s+is|agreed\.\s*we\'ll|agreed\s*,\s*we\'ll)\b",
+    r"^(?:a\s+smooth\s+release\s+is\s+key|is\s+key\s+to|is\s+essential\s+to|is\s+critical\s+to)\b",
     r"^(?:we\s+discussed|we\s+talked\s+about|the\s+team\s+discussed|the\s+team\s+talked\s+about|they\s+talked\s+about|they\s+discussed)",
     r"^(?:he\s+mentioned|she\s+mentioned|the\s+client\s+mentioned|they\s+mentioned|we\s+mentioned)",
     r"^(?:it\s+may\s+end\s+up|it\s+might\s+be|a\s+new\s+feature\s+will\s+come\s+out|that\s+okay)",
@@ -416,6 +423,14 @@ class ActionNormalizer:
         for hp in hesitation_patterns:
             text = re.sub(hp, "", text, flags=re.IGNORECASE).strip()
 
+        # Multi-person team commitments e.g. "Esther Wan, George and I will tackle the authentication bugs head on"
+        m_names = re.match(r"^([A-Z][a-zA-Z\s,]+)\s+and\s+(?:i|we)\s+(?:will|can|are\s+going\s+to)\s+(.*)", text, flags=re.IGNORECASE)
+        if m_names:
+            text = m_names.group(2).strip()
+
+        text = re.sub(r"\bhead\s+on\b", "", text, flags=re.IGNORECASE).strip()
+        text = re.sub(r"^(?:tackle)\b", "Resolve and fix", text, flags=re.IGNORECASE).strip()
+
         # Pronoun & conversational verb normalization into specific deliverables
         text = re.sub(r"^(?:send\s+it\s+to\s+([A-Za-z0-9_]+)|send\s+that\s+to\s+([A-Za-z0-9_]+))\b", r"Send the requested document to \1\2", text, flags=re.IGNORECASE)
         text = re.sub(r"^(?:send\s+that\s+to\s+me|send\s+it\s+to\s+me|send\s+to\s+me)\b", "Provide requested document for review and updates", text, flags=re.IGNORECASE)
@@ -448,6 +463,49 @@ class ActionNormalizer:
         if text:
             text = text[0].upper() + text[1:]
         return text
+
+    @classmethod
+    def deduplicate_similar_actions(cls, actions: list[Any]) -> list[Any]:
+        """Fuzzy deduplicates actions that convey the same core task, preserving the richest description."""
+        if not actions:
+            return []
+
+        STOPWORDS = {"a", "an", "the", "and", "or", "to", "for", "with", "of", "in", "on", "our", "their", "them", "these", "those", "is", "are", "by", "from"}
+
+        def get_content_words(text_val: str) -> set[str]:
+            tokens = re.findall(r"\b[a-zA-Z0-9_-]+\b", text_val.lower())
+            return {w for w in tokens if w not in STOPWORDS and len(w) > 2}
+
+        unique_actions = []
+        for item in actions:
+            if isinstance(item, dict):
+                text_val = (item.get("task") or item.get("action") or item.get("description") or "").strip()
+            else:
+                text_val = (getattr(item, "task", "") or getattr(item, "action", "") or getattr(item, "description", "") or "").strip()
+
+            if not text_val:
+                continue
+
+            words = get_content_words(text_val)
+            is_dup = False
+            for idx, existing in enumerate(unique_actions):
+                if isinstance(existing, dict):
+                    ex_text = (existing.get("task") or existing.get("action") or existing.get("description") or "").strip()
+                else:
+                    ex_text = (getattr(existing, "task", "") or getattr(existing, "action", "") or getattr(existing, "description", "") or "").strip()
+                ex_words = get_content_words(ex_text)
+
+                if words and ex_words:
+                    intersection = len(words & ex_words)
+                    overlap_ratio = intersection / min(len(words), len(ex_words))
+                    if overlap_ratio >= 0.70:
+                        is_dup = True
+                        if len(text_val) > len(ex_text):
+                            unique_actions[idx] = item
+                        break
+            if not is_dup:
+                unique_actions.append(item)
+        return unique_actions
 
     @classmethod
     def generate_final_phrase(
@@ -488,6 +546,13 @@ class ExecutiveActionReframingEngine:
         clean_task = ActionNormalizer.normalize_action_work(raw_task)
         if not clean_task:
             clean_task = raw_task.strip().capitalize()
+
+        # Check for multi-name owners in raw_task e.g. "Esther Wan, George and I will..."
+        m_names = re.match(r"^([A-Z][a-zA-Z\s,]+)\s+and\s+(?:i|we)\s+(?:will|can|are\s+going\s+to)\s+(.*)", raw_task.strip(), flags=re.IGNORECASE)
+        if m_names:
+            extracted_names = m_names.group(1).strip()
+            if not owner or any(b in owner.lower() for b in ["unassigned", "speaker", "lead", "none"]):
+                owner = f"{extracted_names} & Lead"
 
         # Formal synthesized sentence
         final_sentence = ActionNormalizer.generate_final_phrase(
@@ -545,14 +610,16 @@ class ExecutiveActionReframingEngine:
 
         if len(valid_items) == 1:
             task, owner, dl = valid_items[0]
-            owner_part = f"{owner} to " if owner and owner.lower() not in ["unassigned", "not specified", "none"] else ""
+            owner_clean = owner.strip() if owner and not any(bad in owner.lower() for bad in ["unassigned", "not specified", "none", "needs owner"]) else ""
+            owner_part = f"{owner_clean} to " if owner_clean else ""
             dl_part = f" by {dl}" if dl and dl.lower() not in ["not specified", "none"] else ""
             return f"Key Commitment: {owner_part}{task.rstrip('.')}{dl_part}."
 
-        # Multiple items: synthesize top commitments concisely
+        # Multiple items: synthesize top commitments concisely without ugly 'Unassigned - needs owner' labels
         summaries = []
-        for task, owner, dl in valid_items[:3]:
-            owner_part = f"{owner}: " if owner and owner.lower() not in ["unassigned", "not specified", "none"] else ""
+        for task, owner, dl in valid_items[:4]:
+            owner_clean = owner.strip() if owner and not any(bad in owner.lower() for bad in ["unassigned", "not specified", "none", "needs owner"]) else ""
+            owner_part = f"{owner_clean}: " if owner_clean else ""
             dl_part = f" (by {dl})" if dl and dl.lower() not in ["not specified", "none"] else ""
             summaries.append(f"{owner_part}{task.rstrip('.')}{dl_part}")
 

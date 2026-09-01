@@ -1417,9 +1417,11 @@ class ValidatorAgent:
                         )
                     )
 
+            deduped_cleaned = ActionNormalizer.deduplicate_similar_actions(cleaned_actions)
+            duplicates["action_items"] = duplicates.get("action_items", 0) + max(0, len(raw_actions.action_items) - len(deduped_cleaned))
             outputs[AgentName.ACTION] = ActionOutput(
-                action_items=cleaned_actions,
-                action_summary=raw_actions.action_summary or ExecutiveActionReframingEngine.synthesize_action_summary(cleaned_actions),
+                action_items=deduped_cleaned,
+                action_summary=raw_actions.action_summary or ExecutiveActionReframingEngine.synthesize_action_summary(deduped_cleaned),
                 confidence=raw_actions.confidence,
             )
         else:

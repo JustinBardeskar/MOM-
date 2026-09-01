@@ -430,19 +430,41 @@ def display_mom_results(result: dict):
         )
 
         if valid_actions:
+            # Deduplicate similar actions for presentation
+            try:
+                from app.ai_brain.quality import ActionNormalizer
+                display_actions = ActionNormalizer.deduplicate_similar_actions(valid_actions)
+            except Exception:
+                display_actions = valid_actions
+
             # Table View
             table_data = []
-            for a in valid_actions:
+            for a in display_actions:
                 task_text = str(a.get("task") or a.get("action") or a.get("description") or "").strip()
-                assigner_text = str(a.get("assigner") or "Speaker / Self").strip()
-                owner_text = str(a.get("owner") or "Unassigned").strip()
+                raw_assigner = str(a.get("assigner") or "").strip()
+                if not raw_assigner or any(b in raw_assigner.lower() for b in ["speaker / self", "speaker/self", "none", "null", "self"]):
+                    assigner_text = "Meeting Chair / Discussion Leader"
+                else:
+                    assigner_text = raw_assigner
+
+                raw_owner = str(a.get("owner") or "").strip()
+                if not raw_owner or any(b in raw_owner.lower() for b in ["unassigned", "needs owner", "none", "null"]):
+                    owner_text = "Unassigned (Open for Volunteer)"
+                elif raw_owner.lower() == "lead":
+                    owner_text = "Workstream Lead"
+                else:
+                    owner_text = raw_owner
+
                 recipient_text = str(a.get("recipient") or "—").strip()
+                if recipient_text.lower() in ["none", "null"]:
+                    recipient_text = "—"
+
                 deadline_text = str(a.get("deadline") or a.get("deadline_text") or "Not specified").strip()
                 status_text = str(a.get("status") or "assigned").strip()
                 pri_raw = str(a.get("priority") or "Medium").upper()
                 table_data.append({
                     "Priority": pri_raw,
-                    "Action Item": task_text,
+                    "Action Item (Specific Task Deliverable)": task_text,
                     "Who Said (Assigner)": assigner_text,
                     "Assigned To (Owner)": owner_text,
                     "Recipient / Team": recipient_text,
@@ -453,10 +475,12 @@ def display_mom_results(result: dict):
             st.dataframe(df_actions, use_container_width=True, hide_index=True)
 
             st.markdown("#### 🗂️ Action Items Delegation & Accountability Breakdown")
-            for idx, a in enumerate(valid_actions, 1):
+            for idx, a in enumerate(display_actions, 1):
                 task_text = str(a.get("task") or a.get("action") or a.get("description") or "").strip()
-                assigner = str(a.get("assigner") or "Meeting Chair / Speaker").strip()
-                owner = str(a.get("owner") or "Unassigned").strip()
+                raw_assigner = str(a.get("assigner") or "").strip()
+                assigner = "Meeting Chair / Discussion Leader" if not raw_assigner or any(b in raw_assigner.lower() for b in ["speaker / self", "speaker/self", "none", "null", "self"]) else raw_assigner
+                raw_owner = str(a.get("owner") or "").strip()
+                owner = "Unassigned (Open for Volunteer)" if not raw_owner or any(b in raw_owner.lower() for b in ["unassigned", "needs owner", "none", "null"]) else ("Workstream Lead" if raw_owner.lower() == "lead" else raw_owner)
                 recipient = str(a.get("recipient") or "").strip()
                 deadline = str(a.get("deadline") or a.get("deadline_text") or "Not specified").strip()
                 status = str(a.get("status") or "assigned").strip()
