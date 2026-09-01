@@ -479,6 +479,8 @@ VAGUE_ACTION_PATTERNS = [
     r"^(?:improve|address|fix|update|review|check|handle|manage)\s+(?:things|security|quality|issues|everything|it|this|that|stuff)$",
     r"^(?:look\s+into|see\s+about|touch\s+base\s+on|track\s+down)\s+(?:things|it|this|that|them|stuff)$",
     r"^(?:investigate\s+and\s+evaluate|validate\s+and\s+audit)\s+(?:it|this|that|them|things|stuff)$",
+    r"^(?:look|check)\s+at\s+the\s+agenda\b",
+    r"^(?:give|provide)\s+(?:an\s+update|updates)\s+on\s+things\b",
     r"^(?:glad\s+you|welcome\s+to|thanks\s+for|talk\s+soon|bye\s+everyone|hello\s+everyone)",
     r"^(?:see\s+item|read\s+only|on\s+the\s+agenda|keep\s+in\s+mind|keep\s+that\s+in\s+mind)",
 ]
@@ -527,23 +529,17 @@ class ActionValidator:
         action_text = action_text.strip()
         lower = action_text.lower()
 
-        # Length check: Must have at least 3 descriptive words
+        # Length check: Must have at least 2 descriptive words
         words = action_text.split()
-        if len(words) < 3:
-            return False, f"Action text '{action_text}' is too short (minimum 3 words required for a specific task)."
+        if len(words) < 2:
+            return False, f"Action text '{action_text}' is too short (minimum 2 words required for a specific task)."
 
         first_word = words[0].lower().rstrip(":,.")
         first_two = f"{words[0].lower()} {words[1].lower()}".rstrip(":,.") if len(words) > 1 else ""
 
-        # Enforce leading imperative verb
-        is_imperative = (
-            first_word in IMPERATIVE_VERBS
-            or first_two in MULTIWORD_IMPERATIVE_VERBS
-            or any(lower.startswith(v + " ") for v in IMPERATIVE_VERBS)
-            or any(lower.startswith(v + " ") for v in MULTIWORD_IMPERATIVE_VERBS)
-        )
-        if not is_imperative:
-            return False, f"Action text '{action_text}' must begin with a strong imperative action verb (e.g., Update, Deploy, Review, Configure, Fix, Analyze)."
+        # Reject conversational greetings or opening filler
+        if first_word in ["hi", "hello", "hey", "welcome", "glad", "thanks", "thank", "bye", "goodbye", "apologies", "sorry", "excuse"]:
+            return False, f"Action text '{action_text}' is a conversational greeting/filler."
 
         # Specificity and anti-conversational checks
         is_vague, reason = ActionSpecificityValidator.is_vague(action_text)
@@ -552,6 +548,16 @@ class ActionValidator:
 
         if ActionNormalizer.is_non_action_discussion(action_text):
             return False, f"Action text '{action_text}' is conversational discussion/chatter, not an executable deliverable."
+
+        # Enforce leading imperative action verb
+        is_imperative = (
+            first_word in IMPERATIVE_VERBS
+            or first_two in MULTIWORD_IMPERATIVE_VERBS
+            or any(lower.startswith(v + " ") for v in IMPERATIVE_VERBS)
+            or any(lower.startswith(v + " ") for v in MULTIWORD_IMPERATIVE_VERBS)
+        )
+        if not is_imperative:
+            return False, f"Action text '{action_text}' must begin with a strong imperative action verb."
 
         # Reject conversational pronoun prefixes
         if any(lower.startswith(bad) for bad in ["i will", "we will", "i'll", "we'll", "let's", "he said", "she said", "they discussed", "i've asked", "we've asked", "has agreed to"]):

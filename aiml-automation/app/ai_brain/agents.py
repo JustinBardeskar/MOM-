@@ -1218,12 +1218,31 @@ class ValidatorAgent:
             duplicates,
         )
         if isinstance(raw_actions, ActionOutput):
-            cleaned_actions = [
-                act for act in raw_actions.action_items
-                if ActionValidator.validate(act)[0]
-            ]
+            from app.ai_brain.quality import ExecutiveActionReframingEngine, ActionNormalizer
+            cleaned_actions = []
+            for act in raw_actions.action_items:
+                raw_text = act.task or act.action or act.description or ""
+                if not raw_text.strip():
+                    continue
+                reframed = ExecutiveActionReframingEngine.reframe_action(
+                    raw_task=raw_text,
+                    owner=act.owner,
+                    deadline=act.deadline or act.deadline_text,
+                )
+                act.task = reframed["task"]
+                act.action = reframed["action"]
+                act.description = reframed["description"]
+                act.owner = reframed["owner"]
+                act.deadline = reframed["deadline"]
+                act.deadline_text = reframed["deadline_text"]
+
+                is_valid, _ = ActionValidator.validate(act)
+                if is_valid or (len(act.task.split()) >= 2 and not ActionNormalizer.is_non_action_discussion(act.task)):
+                    cleaned_actions.append(act)
+
             outputs[AgentName.ACTION] = ActionOutput(
                 action_items=cleaned_actions,
+                action_summary=raw_actions.action_summary or ExecutiveActionReframingEngine.synthesize_action_summary(cleaned_actions),
                 confidence=raw_actions.confidence,
             )
         else:

@@ -291,6 +291,13 @@ st.markdown('<div class="sub-title">10-Agent Swarm Intelligence for Real-Time Me
 
 def display_mom_results(result: dict):
     """Renders a beautifully structured, executive-level Minutes of Meeting document."""
+    if not result:
+        return
+
+    # If wrapped in API response envelope, unwrap inner result
+    if "result" in result and isinstance(result["result"], dict) and any(k in result["result"] for k in ["meeting_summary", "action_items", "decisions"]):
+        result = result["result"]
+
     st.balloons()
     st.success("✨ Minutes of Meeting Successfully Generated & Structured!")
 
