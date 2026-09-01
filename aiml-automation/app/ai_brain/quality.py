@@ -150,6 +150,8 @@ MULTIWORD_IMPERATIVE_VERBS = {
 }
 
 CONVERSATIONAL_PREFIXES = [
+    r"^(?:hey\s+team|hello\s+team|hi\s+team|hi\s+all|team|everyone|guys|folks)[,\s.]+",
+    r"^(?:thanks\s+for\s+joining|thank\s+you\s+all|good\s+morning|good\s+afternoon)[,\s.]+",
     r"^(?:i\s+will|we\s+will|i'll|we'll|i\s+can|we\s+can|let's|can\s+you|could\s+you|please|would\s+you)[,\s]+",
     r"^(?:i\s+am\s+going\s+to|we\s+are\s+going\s+to|i'm\s+going\s+to|we're\s+going\s+to)[,\s]+",
     r"^(?:i\s+gotta|i\s+have\s+to|i\s+need\s+to|we\s+gotta|we\s+have\s+to|we\s+need\s+to|we\s+must|i\s+must)[,\s]+",

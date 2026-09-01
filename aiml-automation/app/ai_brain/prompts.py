@@ -274,7 +274,7 @@ class PromptManager:
             "2. 'executive_summary': A polished 2-3 paragraph executive brief.\n"
             "3. 'key_points': 2-4 concise 1-line milestone takeaways.\n"
             "4. 'action_summary': A single 1-sentence executive overview summarizing the primary commitments made across the meeting.\n"
-            "5. 'action_items': Specific post-meeting tasks with owner, deadline, and priority. NEVER extract conversational transitions (e.g. 'Share one thing', 'Show my screen'). If no tasks exist, return an empty array [].\n"
+            "5. 'action_items': Extract ALL post-meeting tasks, assignments, deliverables, operational commitments, or next steps mentioned or agreed in the discussion. Identify owner (who is responsible), task (what needs to be done), deadline (target date or 'Not specified'), priority ('High'/'Medium'/'Low'), and supporting evidence. Do not miss any action item agreed upon by the participants.\n"
             "6. 'decisions': Ratified agreements, architecture choices, or approvals with approvers.\n"
             "7. 'risks': Identified operational/technical risks paired with actionable mitigations and severity.\n\n"
             "⚠️ CRITICAL OUTPUT FORMAT MANDATE: Return ONLY a valid JSON object matching the schema. No markdown fences, no preamble."
