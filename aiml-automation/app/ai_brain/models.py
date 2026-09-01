@@ -212,6 +212,7 @@ class ActionItem(StrictModel):
     task: str | None = None
     action: str = ""
     description: str = ""
+    assigner: str | None = None
     owner: str | None = None
     deadline: str | None = None
     deadline_text: str | None = None
@@ -236,8 +237,25 @@ class ActionItem(StrictModel):
                 data["action"] = str(task_val).strip()
                 data["description"] = str(task_val).strip()
 
+            if "said_by" in data and not data.get("assigner"):
+                data["assigner"] = data.pop("said_by")
+            elif "speaker" in data and not data.get("assigner"):
+                data["assigner"] = data.get("speaker")
+            elif "assigned_by" in data and not data.get("assigner"):
+                data["assigner"] = data.pop("assigned_by")
+            elif "requested_by" in data and not data.get("assigner"):
+                data["assigner"] = data.pop("requested_by")
+
             if "assignee" in data and not data.get("owner"):
                 data["owner"] = data.pop("assignee")
+            elif "assigned_to" in data and not data.get("owner"):
+                data["owner"] = data.pop("assigned_to")
+
+            if "to_whom" in data and not data.get("recipient"):
+                data["recipient"] = data.pop("to_whom")
+            elif "collaborator" in data and not data.get("recipient"):
+                data["recipient"] = data.pop("collaborator")
+
             if "due_date" in data:
                 if not data.get("deadline"):
                     data["deadline"] = data["due_date"]

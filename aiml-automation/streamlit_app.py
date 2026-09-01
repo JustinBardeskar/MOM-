@@ -432,42 +432,54 @@ def display_mom_results(result: dict):
             table_data = []
             for a in valid_actions:
                 task_text = str(a.get("task") or a.get("action") or a.get("description") or "").strip()
-                owner_text = str(a.get("owner") or "Not specified")
-                deadline_text = str(a.get("deadline") or a.get("deadline_text") or "Not specified")
-                status_text = str(a.get("status") or "Not specified")
+                assigner_text = str(a.get("assigner") or "Speaker / Self").strip()
+                owner_text = str(a.get("owner") or "Unassigned").strip()
+                recipient_text = str(a.get("recipient") or "—").strip()
+                deadline_text = str(a.get("deadline") or a.get("deadline_text") or "Not specified").strip()
+                status_text = str(a.get("status") or "assigned").strip()
                 pri_raw = str(a.get("priority") or "Medium").upper()
                 table_data.append({
                     "Priority": pri_raw,
                     "Action Item": task_text,
-                    "Owner": owner_text,
-                    "Deadline": deadline_text,
+                    "Who Said (Assigner)": assigner_text,
+                    "Assigned To (Owner)": owner_text,
+                    "Recipient / Team": recipient_text,
+                    "Target Deadline": deadline_text,
                     "Status": status_text,
                 })
             df_actions = pd.DataFrame(table_data)
             st.dataframe(df_actions, use_container_width=True, hide_index=True)
 
-            st.markdown("#### 🗂️ Action Items Breakdown")
+            st.markdown("#### 🗂️ Action Items Delegation & Accountability Breakdown")
             for idx, a in enumerate(valid_actions, 1):
                 task_text = str(a.get("task") or a.get("action") or a.get("description") or "").strip()
-                owner = str(a.get("owner") or "Not specified")
-                deadline = str(a.get("deadline") or a.get("deadline_text") or "Not specified")
-                status = str(a.get("status") or "Not specified")
+                assigner = str(a.get("assigner") or "Meeting Chair / Speaker").strip()
+                owner = str(a.get("owner") or "Unassigned").strip()
+                recipient = str(a.get("recipient") or "").strip()
+                deadline = str(a.get("deadline") or a.get("deadline_text") or "Not specified").strip()
+                status = str(a.get("status") or "assigned").strip()
                 pri = str(a.get("priority") or "Medium").upper()
                 badge_class = f"badge-{pri.lower()}" if pri.lower() in ["high", "medium", "low"] else "badge-medium"
                 quote = a.get("evidence") or a.get("evidence_quote") or a.get("source")
-                quote_html = f'<div style="margin-top: 6px; color: #94a3b8; font-style: italic; font-size: 0.84rem;">💬 <b>Evidence:</b> {quote}</div>' if quote else ""
+                quote_html = f'<div style="margin-top: 8px; color: #94a3b8; font-style: italic; font-size: 0.84rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">💬 <b>Evidence:</b> "{quote}"</div>' if quote else ""
                 
+                recipient_badge = f'<span style="background: rgba(147, 51, 234, 0.15); color: #c084fc; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.82rem;">👥 Recipient: {recipient}</span>' if recipient and recipient.lower() not in ["none", "null", "—", ""] else ""
+                deadline_badge = f'<span style="background: rgba(234, 179, 8, 0.15); color: #fde047; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.82rem;">📅 Due: {deadline}</span>'
+
                 st.markdown(
                     f"""
-                    <div class="card-box card-action" style="padding: 14px 18px; margin-bottom: 10px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <b style="font-size: 1.05rem; color: #93c5fd;">#{idx}. Action: {task_text}</b>
+                    <div class="card-box card-action" style="padding: 16px 20px; margin-bottom: 12px; border-left: 4px solid #3b82f6;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+                            <b style="font-size: 1.08rem; color: #93c5fd; line-height: 1.4;">#{idx}. {task_text}</b>
                             <span class="{badge_class}">{pri}</span>
                         </div>
-                        <div style="margin-top: 6px; color: #cbd5e1; font-size: 0.9rem;">
-                            👤 <b>Owner:</b> <code>{owner}</code> &nbsp;|&nbsp; 
-                            📅 <b>Deadline:</b> <code>{deadline}</code> &nbsp;|&nbsp; 
-                            📌 <b>Status:</b> <code>{status}</code>
+                        <div style="margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 0.88rem; color: #e2e8f0;">
+                            <span style="background: rgba(59, 130, 246, 0.15); color: #93c5fd; padding: 2px 8px; border-radius: 4px; font-weight: 600;">🗣️ From: {assigner}</span>
+                            <span style="color: #64748b;">➔</span>
+                            <span style="background: rgba(34, 197, 94, 0.15); color: #86efac; padding: 2px 8px; border-radius: 4px; font-weight: 600;">👤 Owner: {owner}</span>
+                            {recipient_badge}
+                            {deadline_badge}
+                            <span style="color: #94a3b8; font-size: 0.82rem;">📌 Status: <code>{status}</code></span>
                         </div>
                         {quote_html}
                     </div>
@@ -1062,6 +1074,7 @@ with tab_transcript:
     preset_choice = st.selectbox(
         "Choose a Test Preset or type custom text below:",
         options=[
+            "GitLab Stage Governance & Architecture Sync",
             "Sprint Review & Architecture Sync",
             "Client Kickoff & Requirements",
             "Executive Quarterly Planning",
@@ -1070,6 +1083,12 @@ with tab_transcript:
     )
 
     sample_texts = {
+        "GitLab Stage Governance & Architecture Sync": (
+            "Wayne (Meeting Chair): Welcome everyone. First item, I will run the proposed stage name 'Enrichment' by David DeSanto tomorrow for formal feedback.\n"
+            "Wayne (Meeting Chair): Also, I will update the meeting template to include sections for work anniversaries, new hires, and celebrations.\n"
+            "David: That sounds great. Team members, please check with teams to ensure new segregation of duties approval rules are not slowing down workflows.\n"
+            "Wayne (Meeting Chair): Perfect. We all agreed to adopt the new stage terminology and proceed with the sprint deliverables."
+        ),
         "Sprint Review & Architecture Sync": (
             "Alex: Good morning team. Today we need to finalize the PostgreSQL 16 database migration.\n"
             "Priya: I will create the migration scripts by Friday.\n"

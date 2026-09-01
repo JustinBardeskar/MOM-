@@ -381,10 +381,11 @@ class ExecutiveActionReframingEngine:
         cls,
         raw_task: str,
         owner: str | None = None,
+        assigner: str | None = None,
         recipient: str | None = None,
         deadline: str | None = None,
         meeting_type: str | None = None,
-    ) -> dict[str, str]:
+    ) -> dict[str, Any]:
         """Converts raw conversational transcript text into a structured, executive-grade action item."""
         clean_task = ActionNormalizer.normalize_action_work(raw_task)
         if not clean_task:
@@ -395,9 +396,17 @@ class ExecutiveActionReframingEngine:
             clean_task, owner=owner, recipient=recipient, deadline=deadline
         )
 
-        clean_owner = (owner or "Unassigned").strip().title()
+        clean_owner = (owner or "Unassigned").strip()
         if clean_owner.lower() in ["none", "null", "execute", "assigned lead", "tbd"]:
             clean_owner = "Unassigned"
+
+        clean_assigner = (assigner or "").strip() if assigner else None
+        if clean_assigner and clean_assigner.lower() in ["none", "null", "execute", "tbd"]:
+            clean_assigner = None
+
+        clean_recipient = (recipient or "").strip() if recipient else None
+        if clean_recipient and clean_recipient.lower() in ["none", "null", "tbd"]:
+            clean_recipient = None
 
         clean_deadline = (deadline or "Not specified").strip()
 
@@ -405,7 +414,9 @@ class ExecutiveActionReframingEngine:
             "task": clean_task,
             "action": clean_task,
             "description": final_sentence or clean_task,
+            "assigner": clean_assigner,
             "owner": clean_owner,
+            "recipient": clean_recipient,
             "deadline": None if clean_deadline.lower() in ["not specified", "none", "tbd"] else clean_deadline,
             "deadline_text": clean_deadline,
         }

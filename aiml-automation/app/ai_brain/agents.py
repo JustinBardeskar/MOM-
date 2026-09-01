@@ -569,6 +569,7 @@ class AgentOrchestrator:
             reframed = ExecutiveActionReframingEngine.reframe_action(
                 raw_task=raw,
                 owner=a.owner,
+                assigner=getattr(a, "assigner", None),
                 recipient=getattr(a, "recipient", None),
                 deadline=a.deadline or a.deadline_text,
                 meeting_type=getattr(understanding, "meeting_type", None),
@@ -576,7 +577,9 @@ class AgentOrchestrator:
             a.task = reframed["task"]
             a.action = reframed["action"]
             a.description = reframed["description"]
+            a.assigner = reframed["assigner"]
             a.owner = reframed["owner"]
+            a.recipient = reframed["recipient"]
             a.deadline = reframed["deadline"]
             a.deadline_text = reframed["deadline_text"]
 
@@ -1232,12 +1235,16 @@ class ValidatorAgent:
                 reframed = ExecutiveActionReframingEngine.reframe_action(
                     raw_task=raw_text,
                     owner=act.owner,
+                    assigner=getattr(act, "assigner", None),
+                    recipient=getattr(act, "recipient", None),
                     deadline=act.deadline or act.deadline_text,
                 )
                 act.task = reframed["task"]
                 act.action = reframed["action"]
                 act.description = reframed["description"]
+                act.assigner = reframed["assigner"]
                 act.owner = reframed["owner"]
+                act.recipient = reframed["recipient"]
                 act.deadline = reframed["deadline"]
                 act.deadline_text = reframed["deadline_text"]
 
