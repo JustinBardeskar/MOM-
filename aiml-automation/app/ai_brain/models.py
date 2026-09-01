@@ -327,8 +327,17 @@ class Decision(StrictModel):
         if isinstance(data, dict):
             if "decision" in data and "description" not in data:
                 data["description"] = data.pop("decision")
+            elif "decision_text" in data and "description" not in data:
+                data["description"] = data.pop("decision_text")
+            elif "text" in data and "description" not in data:
+                data["description"] = data.pop("text")
+            elif "title" in data and "description" not in data:
+                data["description"] = data.pop("title")
+
             if "approvers" in data and "approved_by" not in data:
                 data["approved_by"] = data.pop("approvers")
+            if "approved_by" in data and isinstance(data["approved_by"], str):
+                data["approved_by"] = [data["approved_by"]]
         return data
 
 
@@ -504,6 +513,16 @@ class TurboDeliverablesOutput(StrictModel):
                 data["action_items"] = data["actions"]
             if "bullet_points" in data and not data.get("key_points"):
                 data["key_points"] = data["bullet_points"]
+            if "formal_decisions" in data and not data.get("decisions"):
+                data["decisions"] = data["formal_decisions"]
+            elif "governance_decisions" in data and not data.get("decisions"):
+                data["decisions"] = data["governance_decisions"]
+            elif "decision_log" in data and not data.get("decisions"):
+                data["decisions"] = data["decision_log"]
+            elif "resolutions" in data and not data.get("decisions"):
+                data["decisions"] = data["resolutions"]
+            elif "approvals" in data and not data.get("decisions"):
+                data["decisions"] = data["approvals"]
         return data
 
 
