@@ -394,10 +394,15 @@ class HttpLLMProvider(ABC):
         for attempt_idx in range(max_attempts):
             started = time.monotonic()
             try:
+                payload = self._build_payload(request)
+                if attempt_idx > 0 and "response_format" in payload:
+                    # Strip response_format on retry attempts to prevent json_validate_failed errors
+                    payload.pop("response_format", None)
+
                 response = await self._client.post(
                     self._endpoint(),
                     headers=self._build_headers(),
-                    json=self._build_payload(request),
+                    json=payload,
                 )
                 duration_ms = (time.monotonic() - started) * 1000.0
             except httpx.TimeoutException as exc:
@@ -413,6 +418,11 @@ class HttpLLMProvider(ABC):
                 await asyncio.sleep(1.5 * (attempt_idx + 1))
                 continue
 
+            if response.status_code == 400 and attempt_idx < max_attempts - 1:
+                logger.warning("%s returned 400 (likely json_validate_failed). Retrying without response_format constraint...", self._profile.provider.value.upper())
+                await asyncio.sleep(0.5)
+                continue
+
             if response.status_code == 413 and attempt_idx < max_attempts - 1:
                 logger.warning("%s payload too large (413). Trimming user prompt and retrying...", self._profile.provider.value.upper())
                 orig_prompt = request.user_prompt
@@ -426,9 +436,9 @@ class HttpLLMProvider(ABC):
                 await asyncio.sleep(1.0)
                 continue
 
-            if response.status_code == 429 and attempt_idx < 1:
-                wait_time = 1.0
-                logger.warning("%s rate limited (429). Retrying once in %.1fs...", self._profile.provider.value.upper(), wait_time)
+            if response.status_code == 429 and attempt_idx < max_attempts - 1:
+                wait_time = 1.2 * (attempt_idx + 1)
+                logger.warning("%s rate limited (429). Retrying in %.1fs...", self._profile.provider.value.upper(), wait_time)
                 await asyncio.sleep(wait_time)
                 continue
             break
@@ -545,12 +555,16 @@ class GroqProvider(OpenAILikeProvider):
                 {"role": "user", "content": request.user_prompt},
             ],
             "temperature": request.temperature,
-            "max_tokens": request.max_output_tokens,
-            "response_format": {"type": "json_object"},
+            "max_tokens": min(request.max_output_tokens, 1800),
         }
+        # Only attach response_format for models without reasoning-schema validation conflicts
         if "gpt-oss" in self._profile.model.lower():
             payload["reasoning_effort"] = "low"
-        elif "deepseek" in self._profile.model.lower():
+            # gpt-oss emits thoughts before JSON; omit response_format so Groq returns 200 without json_validate_failed
+        else:
+            payload["response_format"] = {"type": "json_object"}
+
+        if "deepseek" in self._profile.model.lower():
             payload["reasoning_format"] = "hidden"
         return payload
 
