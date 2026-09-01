@@ -59,6 +59,7 @@ from app.ai_brain.providers import (
 )
 from app.ai_brain.quality import (
     ActionNormalizer,
+    ActionSpecificityValidator,
     ActionValidator,
     AgentQualityLoop,
     ExecutiveActionReframingEngine,
@@ -517,36 +518,33 @@ class AgentOrchestrator:
         }
 
         # Stage 3: High-Recall Action Item Harvesting & Reframing
+        # Stage 3: High-Quality Action Item Harvesting & Reframing
         candidate_actions: list[ActionItem] = list(actions_out.action_items)
 
-        # Supplement with fast-path NLP commitment extraction to guarantee high recall
-        try:
-            from app.ai_brain.quality import NLPCommitmentAnchorExtractor
-            anchors = NLPCommitmentAnchorExtractor.extract_anchors(transcript_text)
-            existing_sigs = {
-                (a.task or a.action or a.description or "").lower().strip()
-                for a in candidate_actions
-            }
-            for anchor in anchors:
-                task_candidate = anchor.inferred_task or anchor.cue_text
-                if task_candidate.lower().strip() not in existing_sigs:
-                    candidate_actions.append(
-                        ActionItem(
-                            task=task_candidate,
-                            action=task_candidate,
-                            description=task_candidate,
-                            owner=anchor.speaker or "Unassigned",
-                            deadline=anchor.target_deadline or "Not specified",
-                            evidence=anchor.cue_text,
-                            priority="Medium",
-                            confidence=anchor.confidence,
+        # If LLM extracted 0 action items, fall back to high-confidence NLP commitment anchors
+        if not candidate_actions:
+            try:
+                from app.ai_brain.quality import NLPCommitmentAnchorExtractor
+                anchors = NLPCommitmentAnchorExtractor.extract_anchors(transcript_text)
+                for anchor in anchors:
+                    task_candidate = anchor.inferred_task or anchor.cue_text
+                    if not ActionNormalizer.is_non_action_discussion(task_candidate):
+                        candidate_actions.append(
+                            ActionItem(
+                                task=task_candidate,
+                                action=task_candidate,
+                                description=task_candidate,
+                                owner=anchor.speaker or "Unassigned",
+                                deadline=anchor.target_deadline or "Not specified",
+                                evidence=anchor.cue_text,
+                                priority="Medium",
+                                confidence=anchor.confidence,
+                            )
                         )
-                    )
-                    existing_sigs.add(task_candidate.lower().strip())
-        except Exception as exc:
-            logger.debug("NLP anchor supplementation note: %s", exc)
+            except Exception as exc:
+                logger.debug("NLP anchor supplementation note: %s", exc)
 
-        # If still empty, pull fallback candidate tasks
+        # If still empty, pull structured fallback candidate tasks
         if not candidate_actions:
             try:
                 fb_action = self._get_fallback_output(
@@ -557,10 +555,17 @@ class AgentOrchestrator:
                 pass
 
         reframed_actions = []
+        seen_tasks = set()
         for a in candidate_actions:
             raw = a.task or a.action or a.description or ""
             if not raw or not raw.strip():
                 continue
+            if ActionNormalizer.is_non_action_discussion(raw):
+                continue
+            is_vague, _ = ActionSpecificityValidator.is_vague(raw)
+            if is_vague:
+                continue
+
             reframed = ExecutiveActionReframingEngine.reframe_action(
                 raw_task=raw,
                 owner=a.owner,
@@ -576,7 +581,7 @@ class AgentOrchestrator:
             a.deadline_text = reframed["deadline_text"]
 
             is_valid, _ = ActionValidator.validate(a)
-            if is_valid or (len(a.task.split()) >= 3 and not ActionNormalizer.is_non_action_discussion(a.task)):
+            if is_valid:
                 reframed_actions.append(a)
 
         outputs_dict[AgentName.ACTION] = ActionOutput(

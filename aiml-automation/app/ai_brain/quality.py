@@ -139,7 +139,8 @@ IMPERATIVE_VERBS = {
     "email", "inform", "discuss", "provide", "ensure", "clarify",
     "train", "launch", "start", "finish", "export", "import", "handle",
     "update", "write", "set", "setup", "curate", "forecast", "recalculate",
-    "standardize", "restructure", "streamline", "establish", "consolidate"
+    "standardize", "restructure", "streamline", "establish", "consolidate",
+    "run", "close", "ping", "ask", "query", "source"
 }
 
 MULTIWORD_IMPERATIVE_VERBS = {
@@ -192,6 +193,10 @@ NON_ACTION_PATTERNS = [
     r"^(?:hi,\s*i'm\s+welcome|welcome,\s*[A-Za-z]+,\s*to\s+the\s+meeting)",
     r"^(?:has\s+accepted\s+the\s+opportunity|accepted\s+the\s+opportunity|accepted\s+team\s+leadership)",
     r"^(?:moving\s+product\s+sections|anti-abuse\s+is\s+moving|will\s+include\s+two\s+stages)",
+    r"(?:type\s+this\s+in|type\s+in\s+here|typing\s+in\s+here|i\'ll\s+type\s+this|put\s+a\s+note\s+in\s+there|write\s+this\s+down|finish\s+writing|verbalize\s+and\s+then)",
+    r"^(?:verbalize|say\s+it\s+now|put\s+a\s+note|figure\s+it\s+out|type\s+this|i\s+was\s+going\s+to\s+mention|i\'ll\s+type\s+this)",
+    r"(?:can\'?t\s+remember\s+what\s+we\s+ended\s+up\s+with|i\s+can\'?t\s+remember|can\'?t\s+recall|i\s+will\s+admit\s+this|at\s+least\s+to\s+me)",
+    r"^(?:the\s+end\s+of\s+the\s+quarter|at\s+least\s+to\s+me|link\s+in\s+another\s+issue|a\s+separate\s+issue\s+that\s+is)",
 ]
 
 GERUND_MAPPINGS = {
