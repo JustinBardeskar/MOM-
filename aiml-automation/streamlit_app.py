@@ -3,6 +3,7 @@
 import base64
 import json
 import os
+import textwrap
 import time
 from datetime import datetime
 
@@ -416,14 +417,14 @@ def display_mom_results(result: dict):
             or ExecutiveActionReframingEngine.synthesize_action_summary(valid_actions)
         )
         st.markdown(
-            f"""
+            textwrap.dedent(f"""
             <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(147, 51, 234, 0.08)); border-left: 4px solid #3b82f6; border-radius: 8px; padding: 12px 18px; margin-bottom: 16px;">
                 <span style="font-size: 0.82rem; font-weight: 700; color: #60a5fa; text-transform: uppercase; letter-spacing: 0.05em;">⚡ Executive Action Overview (1-Line Summary)</span>
                 <div style="font-size: 1.0rem; color: #f1f5f9; margin-top: 4px; font-weight: 500;">
                     {action_summary_text}
                 </div>
             </div>
-            """,
+            """).strip(),
             unsafe_allow_html=True,
         )
 
@@ -466,26 +467,24 @@ def display_mom_results(result: dict):
                 recipient_badge = f'<span style="background: rgba(147, 51, 234, 0.15); color: #c084fc; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.82rem;">👥 Recipient: {recipient}</span>' if recipient and recipient.lower() not in ["none", "null", "—", ""] else ""
                 deadline_badge = f'<span style="background: rgba(234, 179, 8, 0.15); color: #fde047; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.82rem;">📅 Due: {deadline}</span>'
 
-                st.markdown(
-                    f"""
-                    <div class="card-box card-action" style="padding: 16px 20px; margin-bottom: 12px; border-left: 4px solid #3b82f6;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
-                            <b style="font-size: 1.08rem; color: #93c5fd; line-height: 1.4;">#{idx}. {task_text}</b>
-                            <span class="{badge_class}">{pri}</span>
-                        </div>
-                        <div style="margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 0.88rem; color: #e2e8f0;">
-                            <span style="background: rgba(59, 130, 246, 0.15); color: #93c5fd; padding: 2px 8px; border-radius: 4px; font-weight: 600;">🗣️ From: {assigner}</span>
-                            <span style="color: #64748b;">➔</span>
-                            <span style="background: rgba(34, 197, 94, 0.15); color: #86efac; padding: 2px 8px; border-radius: 4px; font-weight: 600;">👤 Owner: {owner}</span>
-                            {recipient_badge}
-                            {deadline_badge}
-                            <span style="color: #94a3b8; font-size: 0.82rem;">📌 Status: <code>{status}</code></span>
-                        </div>
-                        {quote_html}
+                card_html = textwrap.dedent(f"""
+                <div class="card-box card-action" style="padding: 16px 20px; margin-bottom: 12px; border-left: 4px solid #3b82f6;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+                        <b style="font-size: 1.08rem; color: #93c5fd; line-height: 1.4;">#{idx}. {task_text}</b>
+                        <span class="{badge_class}">{pri}</span>
                     </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                    <div style="margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 0.88rem; color: #e2e8f0;">
+                        <span style="background: rgba(59, 130, 246, 0.15); color: #93c5fd; padding: 2px 8px; border-radius: 4px; font-weight: 600;">🗣️ From: {assigner}</span>
+                        <span style="color: #64748b;">➔</span>
+                        <span style="background: rgba(34, 197, 94, 0.15); color: #86efac; padding: 2px 8px; border-radius: 4px; font-weight: 600;">👤 Owner: {owner}</span>
+                        {recipient_badge}
+                        {deadline_badge}
+                        <span style="color: #94a3b8; font-size: 0.82rem;">📌 Status: <code>{status}</code></span>
+                    </div>
+                    {quote_html}
+                </div>
+                """).strip()
+                st.markdown(card_html, unsafe_allow_html=True)
 
             # Golden Examples Feedback Trigger
             if st.button("⭐ Approve Actions & Save as Golden Examples", key="save_golden_actions"):

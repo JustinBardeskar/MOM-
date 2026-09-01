@@ -497,6 +497,9 @@ VAGUE_ACTION_PATTERNS = [
     r"^(?:investigate\s+and\s+evaluate|validate\s+and\s+audit)\s+(?:it|this|that|them|things|stuff)$",
     r"^(?:look|check)\s+at\s+the\s+agenda\b",
     r"^(?:give|provide)\s+(?:an\s+update|updates)\s+on\s+things\b",
+    r"^(?:publish|send|share|show|give|do|make)\s+it\s+(?:to|with|for)\s+[A-Za-z]+$",
+    r"^(?:send|give|forward)\s+(?:you\s+)?another\s+(?:invitation|invite|calendar\s+invite|link|email)\b",
+    r"^(?:send|forward)\s+(?:you\s+)?an\s+(?:invitation|invite|calendar\s+invite)\b",
     r"^(?:glad\s+you|welcome\s+to|thanks\s+for|talk\s+soon|bye\s+everyone|hello\s+everyone)",
     r"^(?:see\s+item|read\s+only|on\s+the\s+agenda|keep\s+in\s+mind|keep\s+that\s+in\s+mind)",
 ]
