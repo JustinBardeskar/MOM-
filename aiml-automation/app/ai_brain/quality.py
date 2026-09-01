@@ -61,6 +61,11 @@ class NLPCommitmentAnchorExtractor:
         "let me handle", "i will make sure to", "i'll deploy", "i'll finalize",
         "i'll review", "i'll coordinate", "i'll update", "action item",
         "assigned to", "responsible for", "take ownership", "submit the report",
+        "please", "can you", "could you", "need to", "needs to", "have to",
+        "make sure to", "ensure that", "follow up with", "check with",
+        "coordinate with", "run by", "reach out to", "ping the", "ask for",
+        "update the", "finalize the", "review the", "submit the", "deploy the",
+        "test the", "share the", "draft the", "prepare the",
     ]
 
     DECISION_TRIGGERS: ClassVar[list[str]] = [
