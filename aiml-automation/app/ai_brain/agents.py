@@ -594,8 +594,9 @@ class AgentOrchestrator:
     async def _execute_turbo_deliverables(
         self, contract: M2ToM3Contract, transcript_text: str
     ) -> TurboDeliverablesOutput:
+        context = self._runtime._contexts.select(contract, AgentName.SUMMARY) or transcript_text
         schema = json.dumps(TurboDeliverablesOutput.model_json_schema(), indent=2)
-        system, user = self._runtime._prompts.render_turbo_deliverables(transcript_text, schema)
+        system, user = self._runtime._prompts.render_turbo_deliverables(context, schema)
         last_error: Exception | None = None
         for attempt in range(1, self._max_attempts + 1):
             started = time.perf_counter()
@@ -638,8 +639,9 @@ class AgentOrchestrator:
     async def _execute_turbo_intelligence(
         self, contract: M2ToM3Contract, transcript_text: str
     ) -> TurboIntelligenceOutput:
+        context = self._runtime._contexts.select(contract, AgentName.SENTIMENT) or transcript_text
         schema = json.dumps(TurboIntelligenceOutput.model_json_schema(), indent=2)
-        system, user = self._runtime._prompts.render_turbo_intelligence(transcript_text, schema)
+        system, user = self._runtime._prompts.render_turbo_intelligence(context, schema)
         last_error: Exception | None = None
         for attempt in range(1, self._max_attempts + 1):
             started = time.perf_counter()

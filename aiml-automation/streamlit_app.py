@@ -389,10 +389,18 @@ def display_mom_results(result: dict):
         st.markdown("#### 🎯 Action Items Matrix (Post-Meeting Tasks & Responsibilities)")
         st.caption("Specific tasks that need to be completed after the meeting, assigned owners, and required delivery deadlines.")
         
-        valid_actions = [
-            a for a in actions
-            if a.get("status", "").lower() != "failed"
-        ]
+        raw_actions = actions if actions else (result.get("action_items") or result.get("actions") or [])
+        valid_actions = []
+        for a in raw_actions:
+            if isinstance(a, dict):
+                st_val = str(a.get("status") or "").strip().lower()
+                if st_val != "failed":
+                    valid_actions.append(a)
+            else:
+                st_val = str(getattr(a, "status", "") or "").strip().lower()
+                if st_val != "failed":
+                    d = a.model_dump() if hasattr(a, "model_dump") else a.__dict__
+                    valid_actions.append(d)
 
         # Executive 1-Line Action Summary (NLP / Semantic Overview)
         from app.ai_brain.quality import ExecutiveActionReframingEngine
@@ -416,12 +424,13 @@ def display_mom_results(result: dict):
             # Table View
             table_data = []
             for a in valid_actions:
-                task_text = (a.get("task") or a.get("action") or a.get("description", "")).strip()
-                owner_text = a.get("owner") or "Not specified"
-                deadline_text = a.get("deadline") or a.get("deadline_text") or "Not specified"
-                status_text = a.get("status") or "Not specified"
+                task_text = str(a.get("task") or a.get("action") or a.get("description") or "").strip()
+                owner_text = str(a.get("owner") or "Not specified")
+                deadline_text = str(a.get("deadline") or a.get("deadline_text") or "Not specified")
+                status_text = str(a.get("status") or "Not specified")
+                pri_raw = str(a.get("priority") or "Medium").upper()
                 table_data.append({
-                    "Priority": str(a.get("priority", "Medium")).upper(),
+                    "Priority": pri_raw,
                     "Action Item": task_text,
                     "Owner": owner_text,
                     "Deadline": deadline_text,
@@ -432,11 +441,11 @@ def display_mom_results(result: dict):
 
             st.markdown("#### 🗂️ Action Items Breakdown")
             for idx, a in enumerate(valid_actions, 1):
-                task_text = (a.get("task") or a.get("action") or a.get("description", "")).strip()
-                owner = a.get("owner") or "Not specified"
-                deadline = a.get("deadline") or a.get("deadline_text") or "Not specified"
-                status = a.get("status") or "Not specified"
-                pri = str(a.get("priority", "Medium")).upper()
+                task_text = str(a.get("task") or a.get("action") or a.get("description") or "").strip()
+                owner = str(a.get("owner") or "Not specified")
+                deadline = str(a.get("deadline") or a.get("deadline_text") or "Not specified")
+                status = str(a.get("status") or "Not specified")
+                pri = str(a.get("priority") or "Medium").upper()
                 badge_class = f"badge-{pri.lower()}" if pri.lower() in ["high", "medium", "low"] else "badge-medium"
                 quote = a.get("evidence") or a.get("evidence_quote") or a.get("source")
                 quote_html = f'<div style="margin-top: 6px; color: #94a3b8; font-style: italic; font-size: 0.84rem;">💬 <b>Evidence:</b> {quote}</div>' if quote else ""
