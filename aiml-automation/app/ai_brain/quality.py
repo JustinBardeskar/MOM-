@@ -23,6 +23,7 @@ from app.ai_brain.models import (
     Decision,
     LLMRequest,
     LLMResponse,
+    Risk,
     SentimentOutput,
     StrictModel,
 )
@@ -67,6 +68,19 @@ class NLPCommitmentAnchorExtractor:
         "approved the", "unanimously agreed", "consensus is", "ratified",
         "all agreed to", "agreed that", "decided on", "decision is to",
         "formally approved", "consensus was to", "aligned on", "settled on",
+        "will proceed with", "chosen to", "we are going with", "we'll go with",
+        "our approach is to", "adopt the", "adopting the", "agreed on",
+        "target is", "targeting", "focus is to", "focus for", "our plan is to",
+        "the plan is to", "moving forward with", "go ahead with", "prioritize",
+        "prioritizing", "survey strategy", "milestone deliverables", "scheduled to",
+        "concluded to", "confirmed to", "scope for",
+    ]
+
+    RISK_TRIGGERS: ClassVar[list[str]] = [
+        "risk", "risks", "concern", "blocker", "blocking", "bottleneck", "timeout", "timeouts",
+        "slow down", "slowing down", "vulnerability", "failure", "write contention", "contention",
+        "traffic spike", "memory leak", "latency", "outage", "downtime", "compliance issue",
+        "security risk", "single point of failure", "technical debt", "delay", "delays",
     ]
 
     @classmethod
@@ -128,7 +142,8 @@ class NLPCommitmentAnchorExtractor:
                 for prefix in [
                     "we all agreed to ", "we agreed to ", "we decided to ", "we decided that ",
                     "we also approved ", "we approved ", "all agreed to ", "consensus is to ",
-                    "the decision is to ", "agreed to ", "decided to "
+                    "the decision is to ", "agreed to ", "decided to ", "we will proceed with ",
+                    "we are going with ", "we'll go with "
                 ]:
                     if clean_desc.lower().startswith(prefix):
                         clean_desc = clean_desc[len(prefix):].strip()
@@ -145,6 +160,41 @@ class NLPCommitmentAnchorExtractor:
                         )
                     )
         return decisions[:8]
+
+    @classmethod
+    def extract_risks(cls, transcript_text: str) -> list[Risk]:
+        risks: list[Risk] = []
+        if not transcript_text:
+            return risks
+        lines = [line.strip() for line in transcript_text.splitlines() if line.strip()]
+        for line in lines:
+            speaker, text = _parse_speaker_and_text(line)
+            lower = text.lower()
+            if any(r in lower for r in cls.RISK_TRIGGERS):
+                if len(text.split()) >= 4 and not ActionNormalizer.is_non_action_discussion(text):
+                    clean_desc = text
+                    for prefix in [
+                        "a critical risk is ", "a major risk is ", "the main risk is ",
+                        "our concern is ", "the blocker is ", "we have a risk with ",
+                        "one risk is ", "a potential risk is "
+                    ]:
+                        if clean_desc.lower().startswith(prefix):
+                            clean_desc = clean_desc[len(prefix):].strip()
+                    clean_desc = clean_desc[0].upper() + clean_desc[1:] if clean_desc else clean_desc
+                    sev = "High" if any(h in lower for h in ["critical", "severe", "spike", "timeout", "outage", "vulnerability", "security", "leak", "contention"]) else "Medium"
+                    risks.append(
+                        Risk(
+                            description=clean_desc,
+                            severity=sev,
+                            probability="Medium",
+                            impact="Operational or technical performance degradation if unmitigated.",
+                            mitigation=f"Continuous monitoring and proactive review by {speaker or 'team'}.",
+                            owner=speaker or "Technical Lead",
+                            evidence_quote=text,
+                            confidence=0.90,
+                        )
+                    )
+        return risks[:6]
 
 
 # ==========================================

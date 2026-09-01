@@ -437,8 +437,11 @@ class HttpLLMProvider(ABC):
                 continue
 
             if response.status_code == 429 and attempt_idx < max_attempts - 1:
-                wait_time = 1.2 * (attempt_idx + 1)
-                logger.warning("%s rate limited (429). Retrying in %.1fs...", self._profile.provider.value.upper(), wait_time)
+                wait_time = 0.6 * (attempt_idx + 1)
+                logger.warning("%s rate limited (429). Retrying with fast capacity in %.1fs...", self._profile.provider.value.upper(), wait_time)
+                if "120b" in str(payload.get("model", "")).lower():
+                    payload["model"] = "qwen/qwen3.8-27b"
+                    payload["response_format"] = {"type": "json_object"}
                 await asyncio.sleep(wait_time)
                 continue
             break
