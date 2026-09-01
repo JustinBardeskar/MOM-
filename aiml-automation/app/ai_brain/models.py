@@ -405,6 +405,8 @@ class Topic(StrictModel):
                 data["name"] = data.pop("topic")
             if "title" in data and "name" not in data:
                 data["name"] = data.pop("title")
+            if "description" in data and "summary" not in data:
+                data["summary"] = data.pop("description")
         return data
 
 
@@ -463,6 +465,39 @@ class FollowUpOutput(StrictModel):
     follow_up_tasks: list[FollowUpTask] = Field(default_factory=list)
     next_meeting_agenda: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.95, ge=0, le=1)
+
+
+class TurboDeliverablesOutput(StrictModel):
+    meeting_title: str | None = None
+    executive_summary: str = ""
+    key_points: list[str] = Field(default_factory=list)
+    action_summary: str | None = None
+    action_items: list[ActionItem] = Field(default_factory=list)
+    decisions: list[Decision] = Field(default_factory=list)
+    risks: list[Risk] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_turbo_deliv(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "summary" in data and not data.get("executive_summary"):
+                data["executive_summary"] = data["summary"]
+            if "actions" in data and not data.get("action_items"):
+                data["action_items"] = data["actions"]
+            if "bullet_points" in data and not data.get("key_points"):
+                data["key_points"] = data["bullet_points"]
+        return data
+
+
+class TurboIntelligenceOutput(StrictModel):
+    meeting_type: MeetingType = MeetingType.GENERAL
+    rationale: str = "Standard operational session review"
+    sentiment: SentimentOutput = Field(default_factory=SentimentOutput)
+    topics: list[Topic] = Field(default_factory=list)
+    requirements: list[Requirement] = Field(default_factory=list)
+    open_questions: list[OpenQuestion] = Field(default_factory=list)
+    follow_up_tasks: list[FollowUpTask] = Field(default_factory=list)
+    next_meeting_agenda: list[str] = Field(default_factory=list)
 
 
 class Conflict(StrictModel):

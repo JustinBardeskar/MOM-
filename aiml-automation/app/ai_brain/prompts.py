@@ -260,6 +260,67 @@ class PromptManager:
         user = "\n\n".join(user_parts)
         return system, user
 
+    def render_turbo_deliverables(
+        self,
+        transcript: str,
+        schema: str,
+        meeting_type: MeetingType | None = None,
+    ) -> tuple[str, str]:
+        """Renders unified high-speed prompt for Boardroom Deliverables (Summary + Actions + Decisions + Risks)."""
+        system = (
+            "You are the Lead Executive Deliverables AI Agent for enterprise boardroom Minutes of Meeting.\n"
+            "Analyze the meeting transcript and synthesize:\n"
+            "1. 'meeting_title': A formal, descriptive 4-7 word title reflecting the core topic/achievement of this session.\n"
+            "2. 'executive_summary': A polished 2-3 paragraph executive brief.\n"
+            "3. 'key_points': 2-4 concise 1-line milestone takeaways.\n"
+            "4. 'action_summary': A single 1-sentence executive overview summarizing the primary commitments made across the meeting.\n"
+            "5. 'action_items': Specific post-meeting tasks with owner, deadline, and priority. NEVER extract conversational transitions (e.g. 'Share one thing', 'Show my screen'). If no tasks exist, return an empty array [].\n"
+            "6. 'decisions': Ratified agreements, architecture choices, or approvals with approvers.\n"
+            "7. 'risks': Identified operational/technical risks paired with actionable mitigations and severity.\n\n"
+            "⚠️ CRITICAL OUTPUT FORMAT MANDATE: Return ONLY a valid JSON object matching the schema. No markdown fences, no preamble."
+        )
+        user_parts = [
+            f"═══ CURRENT MEETING TRANSCRIPT ═══\n\"\"\"\n{transcript}\n\"\"\"",
+        ]
+        try:
+            from app.ai_brain.quality import NLPCommitmentAnchorExtractor
+            anchors = NLPCommitmentAnchorExtractor.extract_anchors(transcript)
+            if anchors:
+                anchor_lines = [
+                    f"• Speaker: '{a.speaker or 'Speaker'}' | Inferred Task: \"{a.inferred_task}\" (Due: {a.target_deadline or 'N/A'})"
+                    for a in anchors[:5]
+                ]
+                user_parts.append(
+                    "═══ DETECTED VERBAL COMMITMENT ANCHORS (NLP ACCELERATOR) ═══\n"
+                    + "\n".join(anchor_lines)
+                )
+        except Exception:
+            pass
+
+        user_parts.append(f"REQUIRED JSON SCHEMA:\n{schema}")
+        return system, "\n\n".join(user_parts)
+
+    def render_turbo_intelligence(
+        self,
+        transcript: str,
+        schema: str,
+    ) -> tuple[str, str]:
+        """Renders unified high-speed prompt for Context Dynamics & Intelligence (Meeting Type + Sentiment + Topics + Questions)."""
+        system = (
+            "You are the Intelligence & Context Dynamics AI Agent for enterprise Minutes of Meeting.\n"
+            "Analyze the transcript and extract:\n"
+            "1. 'meeting_type': One of 'technical', 'scrum', 'product', 'marketing', 'sales', 'client', 'strategy', 'executive', 'board', 'interview', 'hr', 'general'.\n"
+            "2. 'rationale': 1-2 sentence executive explanation of WHY this classification was chosen.\n"
+            "3. 'sentiment': Multi-dimensional sentiment intelligence with overall tone, engagement_level ('High'/'Medium'/'Low'), polarity_score (-1.0 to 1.0), friction_points, alignment_signals, and per-speaker sentiments.\n"
+            "4. 'topics': 2-5 structured agenda topics with name, description, time_spent_percent, sentiment, and key_speakers.\n"
+            "5. 'requirements': Functional or technical specifications discussed.\n"
+            "6. 'open_questions': Unresolved questions needing future clarification.\n"
+            "7. 'follow_up_tasks': Next meeting action items and 'next_meeting_agenda' bullet points.\n\n"
+            "⚠️ CRITICAL OUTPUT FORMAT MANDATE: Return ONLY a valid JSON object matching the schema. No markdown fences, no preamble."
+        )
+        user = f"═══ CURRENT MEETING TRANSCRIPT ═══\n\"\"\"\n{transcript}\n\"\"\"\n\nREQUIRED JSON SCHEMA:\n{schema}"
+        return system, user
+
     @staticmethod
     def _build_templates(version: str) -> dict[AgentName, PromptTemplate]:
         return {

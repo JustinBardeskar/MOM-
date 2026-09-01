@@ -45,6 +45,8 @@ from app.ai_brain.models import (
     SummaryOutput,
     Topic,
     TopicOutput,
+    TurboDeliverablesOutput,
+    TurboIntelligenceOutput,
     ValidationReport,
 )
 from app.ai_brain.prompts import PromptManager
@@ -427,141 +429,214 @@ class AgentOrchestrator:
     ) -> AgentAnalysis:
         memory_records = await self._memory.recall(contract)
         memory_text = self._memory.format(memory_records)
-        await report_stage(PipelineStage.MEETING_UNDERSTANDING, 65)
-        logger.info(
-            "Stage 1: Running Meeting Understanding Agent for job %s...",
-            contract.job_id,
-        )
-        try:
-            understanding = await self._execute_with_retry(
-                self._UNDERSTANDING,
-                contract,
-                None,
-                memory_text,
-            )
-        except Exception as exc:
-            logger.warning(
-                "Stage 1 Meeting Understanding encountered exception: %s. Applying resilient fallback.",
-                exc,
-            )
-            understanding = self._get_fallback_output(self._UNDERSTANDING, contract, None)
-
-        if not isinstance(understanding, MeetingUnderstandingOutput):
-            understanding = MeetingUnderstandingOutput(
-                meeting_type=MeetingType.GENERAL,
-                confidence=0.85,
-                rationale="Meeting processed with standard structural analysis.",
-            )
-        logger.info(
-            "Meeting Understanding identified meeting_type='%s' (confidence=%.2f, rationale='%s')",
-            understanding.meeting_type.value,
-            understanding.confidence,
-            understanding.rationale,
-        )
-
-        await report_stage(PipelineStage.PARALLEL_AGENT_ANALYSIS, 70)
-        logger.info(
-            "Stage 2: Launching 10 Specialist Agents in parallel for job %s...",
-            contract.job_id,
-        )
-        raw_results = await asyncio.gather(
-            *(
-                self._execute_guarded(
-                    definition,
-                    contract,
-                    understanding.meeting_type,
-                    memory_text if definition.name not in [AgentName.SUMMARY, AgentName.MEETING_UNDERSTANDING, AgentName.TOPIC] else None,
-                )
-                for definition in self._SPECIALISTS
-            ),
-            return_exceptions=True,
-        )
-        logger.info(
-            "Stage 2 Complete: All 10 Specialist Agents finished for job %s",
-            contract.job_id,
-        )
-        outputs_dict = {}
-        for definition, output in zip(self._SPECIALISTS, raw_results, strict=True):
-            if isinstance(output, BaseException):
-                logger.warning(
-                    "Agent [%s] raised unhandled exception: %s. Applying resilient fallback.",
-                    definition.name.value,
-                    output,
-                )
-                outputs_dict[definition.name] = self._get_fallback_output(definition, contract, understanding.meeting_type)
-            else:
-                outputs_dict[definition.name] = output
-
-        # Stage 3: Inter-Agent Consensus, Quote Grounding & SMART Standardization
         raw_lines = [seg.text for seg in getattr(contract.preprocessing, "segments", []) if getattr(seg, "text", "").strip()]
         transcript_text = getattr(contract.preprocessing, "text", "") or " ".join(raw_lines) or ""
 
-        if AgentName.ACTION in outputs_dict and AgentName.DECISION in outputs_dict and AgentName.RISK in outputs_dict:
-            try:
-                actions_out: ActionOutput = outputs_dict[AgentName.ACTION]
-                decisions_out: DecisionOutput = outputs_dict[AgentName.DECISION]
-                risks_out: RiskOutput = outputs_dict[AgentName.RISK]
-                summary_out: SummaryOutput | None = outputs_dict.get(AgentName.SUMMARY)
+        await report_stage(PipelineStage.MEETING_UNDERSTANDING, 65)
+        await report_stage(PipelineStage.PARALLEL_AGENT_ANALYSIS, 70)
+        logger.info(
+            "Stage 1 & 2: Launching High-Speed Dual-Core Swarm for job %s...",
+            contract.job_id,
+        )
 
-                # For long meetings (1-hour+), supplement with full chronological timeline extraction
-                chunks_count = len(getattr(contract.preprocessing, "chunks", []))
-                combined_actions = list(actions_out.action_items)
-                combined_decisions = list(decisions_out.decisions)
+        # Launch Dual-Core Engines in Parallel
+        results = await asyncio.gather(
+            self._execute_turbo_deliverables(contract, transcript_text),
+            self._execute_turbo_intelligence(contract, transcript_text),
+            return_exceptions=True,
+        )
 
-                # Ensure full coverage across the entire meeting by merging unique valid NLP commitments
-                try:
-                    fb_action: ActionOutput = self._get_fallback_output(
-                        AgentDefinition(AgentName.ACTION, ActionOutput), contract, understanding.meeting_type
-                    )
-                    existing_tasks = {a.task.lower().strip() for a in combined_actions if getattr(a, "task", None)}
-                    for fb_a in fb_action.action_items:
-                        is_val, _ = ActionValidator.validate(fb_a)
-                        if is_val and fb_a.task.lower().strip() not in existing_tasks:
-                            combined_actions.append(fb_a)
-                            existing_tasks.add(fb_a.task.lower().strip())
-                except Exception:
-                    pass
+        deliv_res, intel_res = results[0], results[1]
 
-                # Formal Executive Action Reframing, Strict Specificity Filtering & Deduplication Pass
-                reframed_actions = []
-                seen_tasks = set()
-                for a in combined_actions:
-                    raw = a.task or a.action or a.description or ""
-                    reframed = ExecutiveActionReframingEngine.reframe_action(
-                        raw_task=raw,
-                        owner=a.owner,
-                        recipient=getattr(a, "recipient", None),
-                        deadline=a.deadline or a.deadline_text,
-                        meeting_type=getattr(understanding, "meeting_type", None),
-                    )
-                    a.task = reframed["task"]
-                    a.action = reframed["action"]
-                    a.description = reframed["description"]
-                    a.owner = reframed["owner"]
-                    a.deadline = reframed["deadline"]
-                    a.deadline_text = reframed["deadline_text"]
+        # 1. Populate Executive Deliverables
+        if isinstance(deliv_res, TurboDeliverablesOutput):
+            summary_out = SummaryOutput(
+                executive_summary=deliv_res.executive_summary,
+                key_points=deliv_res.key_points,
+                suggested_title=deliv_res.meeting_title,
+                confidence=0.95,
+            )
+            actions_out = ActionOutput(
+                action_items=deliv_res.action_items,
+                action_summary=deliv_res.action_summary,
+                confidence=0.95,
+            )
+            decisions_out = DecisionOutput(decisions=deliv_res.decisions, confidence=0.95)
+            risks_out = RiskOutput(risks=deliv_res.risks, confidence=0.95)
+        else:
+            logger.warning("Turbo Deliverables encountered exception: %s. Using resilient fallback.", deliv_res)
+            summary_out = self._get_fallback_output(AgentDefinition(AgentName.SUMMARY, SummaryOutput), contract, None)
+            actions_out = self._get_fallback_output(AgentDefinition(AgentName.ACTION, ActionOutput), contract, None)
+            decisions_out = self._get_fallback_output(AgentDefinition(AgentName.DECISION, DecisionOutput), contract, None)
+            risks_out = self._get_fallback_output(AgentDefinition(AgentName.RISK, RiskOutput), contract, None)
 
-                    # Rigorous Garbage & Vague Item Elimination
-                    is_valid, reason = ActionValidator.validate(a)
-                    if not is_valid:
-                        logger.debug("Filtered non-specific/garbage action candidate '%s': %s", a.task, reason)
-                        continue
+        # 2. Populate Meeting Intelligence
+        if isinstance(intel_res, TurboIntelligenceOutput):
+            understanding = MeetingUnderstandingOutput(
+                meeting_type=intel_res.meeting_type,
+                rationale=intel_res.rationale,
+                meeting_title=getattr(deliv_res, "meeting_title", None) if isinstance(deliv_res, TurboDeliverablesOutput) else None,
+                confidence=0.95,
+            )
+            sentiment_out = intel_res.sentiment
+            topic_out = TopicOutput(topics=intel_res.topics, confidence=0.95)
+            req_out = RequirementOutput(requirements=intel_res.requirements, confidence=0.95)
+            quest_out = QuestionOutput(open_questions=intel_res.open_questions, confidence=0.95)
+            follow_out = FollowUpOutput(follow_up_tasks=intel_res.follow_up_tasks, next_meeting_agenda=intel_res.next_meeting_agenda, confidence=0.95)
+        else:
+            logger.warning("Turbo Intelligence encountered exception: %s. Using resilient fallback.", intel_res)
+            understanding = self._get_fallback_output(self._UNDERSTANDING, contract, None)
+            sentiment_out = self._get_fallback_output(AgentDefinition(AgentName.SENTIMENT, SentimentOutput), contract, None)
+            topic_out = self._get_fallback_output(AgentDefinition(AgentName.TOPIC, TopicOutput), contract, None)
+            req_out = self._get_fallback_output(AgentDefinition(AgentName.REQUIREMENT, RequirementOutput), contract, None)
+            quest_out = self._get_fallback_output(AgentDefinition(AgentName.QUESTION, QuestionOutput), contract, None)
+            follow_out = self._get_fallback_output(AgentDefinition(AgentName.FOLLOW_UP, FollowUpOutput), contract, None)
 
-                    reframed_actions.append(a)
+        # 3. Extract and Populate Deadlines
+        deadline_items = []
+        for a in actions_out.action_items:
+            if a.deadline or a.deadline_text:
+                deadline_items.append(Deadline(
+                    task=a.task,
+                    deadline=a.deadline or a.deadline_text or "N/A",
+                    owner=a.owner,
+                ))
+        deadline_out = DeadlineOutput(deadlines=deadline_items, confidence=0.95)
 
-                outputs_dict[AgentName.ACTION] = ActionOutput(action_items=reframed_actions, confidence=actions_out.confidence)
-                outputs_dict[AgentName.DECISION] = DecisionOutput(decisions=combined_decisions, confidence=decisions_out.confidence)
-                outputs_dict[AgentName.RISK] = RiskOutput(risks=risks_out.risks, blockers=risks_out.blockers, confidence=risks_out.confidence)
-                if summary_out:
-                    outputs_dict[AgentName.SUMMARY] = summary_out
-            except Exception as exc:
-                logger.warning("Consensus alignment failed: %s. Using raw agent outputs.", exc)
+        outputs_dict = {
+            AgentName.SUMMARY: summary_out,
+            AgentName.ACTION: actions_out,
+            AgentName.DECISION: decisions_out,
+            AgentName.RISK: risks_out,
+            AgentName.SENTIMENT: sentiment_out,
+            AgentName.TOPIC: topic_out,
+            AgentName.REQUIREMENT: req_out,
+            AgentName.QUESTION: quest_out,
+            AgentName.FOLLOW_UP: follow_out,
+            AgentName.DEADLINE: deadline_out,
+        }
+
+        # Stage 3: Inter-Agent Consensus & Executive Reframing Pass
+        reframed_actions = []
+        for a in actions_out.action_items:
+            raw = a.task or a.action or a.description or ""
+            reframed = ExecutiveActionReframingEngine.reframe_action(
+                raw_task=raw,
+                owner=a.owner,
+                recipient=getattr(a, "recipient", None),
+                deadline=a.deadline or a.deadline_text,
+                meeting_type=getattr(understanding, "meeting_type", None),
+            )
+            a.task = reframed["task"]
+            a.action = reframed["action"]
+            a.description = reframed["description"]
+            a.owner = reframed["owner"]
+            a.deadline = reframed["deadline"]
+            a.deadline_text = reframed["deadline_text"]
+
+            is_valid, reason = ActionValidator.validate(a)
+            if is_valid or (len(a.task.split()) >= 3 and not ActionNormalizer.is_non_action_discussion(a.task)):
+                reframed_actions.append(a)
+
+        outputs_dict[AgentName.ACTION] = ActionOutput(
+            action_items=reframed_actions,
+            action_summary=actions_out.action_summary or ExecutiveActionReframingEngine.synthesize_action_summary(reframed_actions),
+            confidence=actions_out.confidence,
+        )
 
         return AgentAnalysis(
             meeting_understanding=understanding,
             outputs=outputs_dict,
             memory_records=memory_records,
         )
+
+    async def _execute_turbo_deliverables(
+        self, contract: M2ToM3Contract, transcript_text: str
+    ) -> TurboDeliverablesOutput:
+        schema = json.dumps(TurboDeliverablesOutput.model_json_schema(), indent=2)
+        system, user = self._runtime._prompts.render_turbo_deliverables(transcript_text, schema)
+        last_error: Exception | None = None
+        for attempt in range(1, self._max_attempts + 1):
+            started = time.perf_counter()
+            try:
+                request = LLMRequest(
+                    system_prompt=system,
+                    user_prompt=user,
+                    max_output_tokens=2000,
+                )
+                provider = self._runtime._router.select(
+                    AgentName.SUMMARY,
+                    estimated_input_tokens=max(1, len(system + user) // 4),
+                    route_attempt=attempt,
+                )
+                response = await provider.complete(request)
+                await self._runtime._costs.record(contract.job_id, provider.profile, response.usage)
+                duration_ms = (time.perf_counter() - started) * 1000
+                await self._runtime._monitor.record_invocation(
+                    contract.job_id,
+                    ModelInvocation(
+                        agent=AgentName.SUMMARY,
+                        provider=provider.profile.provider,
+                        model=provider.profile.model,
+                        cached=False,
+                        attempts=attempt,
+                        latency_ms=duration_ms,
+                        usage=response.usage,
+                        response_model=TurboDeliverablesOutput.__name__,
+                        success=True,
+                    ),
+                )
+                raw_json = self._runtime._extract_json(response.text)
+                return TurboDeliverablesOutput.model_validate_json(raw_json)
+            except Exception as exc:
+                last_error = exc
+                if attempt < self._max_attempts:
+                    await asyncio.sleep(self._retry_base_seconds)
+        raise last_error or RuntimeError("Turbo Deliverables execution failed")
+
+    async def _execute_turbo_intelligence(
+        self, contract: M2ToM3Contract, transcript_text: str
+    ) -> TurboIntelligenceOutput:
+        schema = json.dumps(TurboIntelligenceOutput.model_json_schema(), indent=2)
+        system, user = self._runtime._prompts.render_turbo_intelligence(transcript_text, schema)
+        last_error: Exception | None = None
+        for attempt in range(1, self._max_attempts + 1):
+            started = time.perf_counter()
+            try:
+                request = LLMRequest(
+                    system_prompt=system,
+                    user_prompt=user,
+                    max_output_tokens=2000,
+                )
+                provider = self._runtime._router.select(
+                    AgentName.SENTIMENT,
+                    estimated_input_tokens=max(1, len(system + user) // 4),
+                    route_attempt=attempt,
+                )
+                response = await provider.complete(request)
+                await self._runtime._costs.record(contract.job_id, provider.profile, response.usage)
+                duration_ms = (time.perf_counter() - started) * 1000
+                await self._runtime._monitor.record_invocation(
+                    contract.job_id,
+                    ModelInvocation(
+                        agent=AgentName.SENTIMENT,
+                        provider=provider.profile.provider,
+                        model=provider.profile.model,
+                        cached=False,
+                        attempts=attempt,
+                        latency_ms=duration_ms,
+                        usage=response.usage,
+                        response_model=TurboIntelligenceOutput.__name__,
+                        success=True,
+                    ),
+                )
+                raw_json = self._runtime._extract_json(response.text)
+                return TurboIntelligenceOutput.model_validate_json(raw_json)
+            except Exception as exc:
+                last_error = exc
+                if attempt < self._max_attempts:
+                    await asyncio.sleep(self._retry_base_seconds)
+        raise last_error or RuntimeError("Turbo Intelligence execution failed")
 
     async def _execute_guarded(
         self,
