@@ -104,6 +104,7 @@ def ensure_backend_running(backend_url: str = BACKEND_URL) -> bool:
             "app.main:app",
             "--host", "127.0.0.1",
             "--port", "8100",
+            "--reload",
         ]
         flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
         subprocess.Popen(
