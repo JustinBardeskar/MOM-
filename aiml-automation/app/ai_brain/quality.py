@@ -248,6 +248,7 @@ MULTIWORD_IMPERATIVE_VERBS = {
 }
 
 CONVERSATIONAL_PREFIXES = [
+    r"^(?:great|perfect|excellent|awesome|confirmed|sure|alright|okay|fine|cool)[,\.\s]+",
     r"^(?:hey\s+team|hello\s+team|hi\s+team|hi\s+all|team|everyone|guys|folks)[,\s.]+",
     r"^(?:thanks\s+for\s+joining|thank\s+you\s+all|good\s+morning|good\s+afternoon)[,\s.]+",
     r"^(?:i\s+will|we\s+will|i'll|we'll|i\s+can|we\s+can|let's|can\s+you|could\s+you|please|would\s+you)[,\s]+",
