@@ -43,17 +43,24 @@ class IntegrationHub:
         """Creates a validated Frappe / ERPNext Doctype payload."""
         meeting_title = mom_data.get("meeting_title", "Executive Meeting")
         summary_obj = mom_data.get("summary", {})
-        exec_sum = summary_obj.get("executive_summary", "") if isinstance(summary_obj, dict) else str(summary_obj or "")
+        exec_sum = summary_obj.get("executive_summary", "") if isinstance(summary_obj, dict) else str(summary_obj or mom_data.get("meeting_summary", ""))
 
         tasks = []
         for act in mom_data.get("action_items", []):
+            task_desc = str(act.get("task") or act.get("action") or act.get("description") or "Action Task").strip()
+            owner = str(act.get("owner") or "Unassigned").strip()
+            assigner = str(act.get("assigner") or "Meeting Chair").strip()
+            deadline = str(act.get("deadline_text") or act.get("deadline") or "Not specified").strip()
+            evidence = str(act.get("evidence_quote") or act.get("evidence") or "None").strip()
+
             tasks.append({
                 "doctype": "Task",
-                "subject": act.get("description", ""),
-                "allocated_to": act.get("owner", ""),
+                "subject": task_desc,
+                "allocated_to": owner,
+                "assigned_by": assigner,
                 "priority": act.get("priority", "Medium"),
-                "expected_end_date": act.get("deadline_text", ""),
-                "description": f"Success Criteria: {act.get('success_criteria', 'None')}\nEvidence: {act.get('evidence_quote', 'None')}",
+                "expected_end_date": deadline,
+                "description": f"Assigned by: {assigner}\nOwner: {owner}\nTarget Deadline: {deadline}\nEvidence: {evidence}",
                 "status": "Open",
             })
 
@@ -64,7 +71,7 @@ class IntegrationHub:
             "minutes": exec_sum,
             "tasks": tasks,
             "decisions": [
-                {"decision": d.get("description", ""), "approved_by": ", ".join(d.get("approved_by", []))}
+                {"decision": d.get("description", ""), "approved_by": ", ".join(d.get("approved_by", [])) if isinstance(d.get("approved_by"), list) else str(d.get("approved_by", "Consensus"))}
                 for d in mom_data.get("decisions", [])
             ],
             "risks": [
@@ -79,17 +86,23 @@ class IntegrationHub:
         meeting_title = mom_data.get("meeting_title", "Sprint Meeting")
         tickets = []
         for act in mom_data.get("action_items", []):
+            task_desc = str(act.get("task") or act.get("action") or act.get("description") or "Action Task").strip()
+            owner = str(act.get("owner") or "Unassigned").strip()
+            assigner = str(act.get("assigner") or "Meeting Chair").strip()
+            deadline = str(act.get("deadline_text") or act.get("deadline") or "Not specified").strip()
+            evidence = str(act.get("evidence_quote") or act.get("evidence") or "None").strip()
+
             tickets.append({
                 "fields": {
                     "project": {"key": "MOM"},
-                    "summary": f"[{meeting_title}] {act.get('description')}",
+                    "summary": f"[{meeting_title}] {task_desc}",
                     "description": (
-                        f"*Action Item:* {act.get('description')}\n"
-                        f"*Owner:* {act.get('owner')}\n"
-                        f"*Target Date:* {act.get('deadline_text')}\n"
-                        f"*Priority:* {act.get('priority')}\n"
-                        f"*Success Criteria:* {act.get('success_criteria')}\n"
-                        f"*Evidence:* {act.get('evidence_quote')}"
+                        f"*Action Item:* {task_desc}\n"
+                        f"*Assigner:* {assigner}\n"
+                        f"*Owner:* {owner}\n"
+                        f"*Target Date:* {deadline}\n"
+                        f"*Priority:* {act.get('priority', 'Medium')}\n"
+                        f"*Evidence:* {evidence}"
                     ),
                     "issuetype": {"name": "Task"},
                     "priority": {"name": str(act.get("priority", "Medium")).capitalize()},
@@ -102,18 +115,18 @@ class IntegrationHub:
         """Generates rich interactive Slack Block Kit payload."""
         meeting_title = mom_data.get("meeting_title", "Executive Sync")
         summary_obj = mom_data.get("summary", {})
-        exec_sum = summary_obj.get("executive_summary", "") if isinstance(summary_obj, dict) else str(summary_obj or "")
+        exec_sum = summary_obj.get("executive_summary", "") if isinstance(summary_obj, dict) else str(summary_obj or mom_data.get("meeting_summary", ""))
         actions = mom_data.get("action_items", [])
         decisions = mom_data.get("decisions", [])
 
         action_lines = "\n".join([
-            f"• *{a.get('description')}* — <@{a.get('owner')}> (Due: `{a.get('deadline_text')}`)"
-            for a in actions[:5]
+            f"• *{str(a.get('task') or a.get('action') or a.get('description') or 'Action').strip()}* — <@{a.get('owner', 'Unassigned')}> (Due: `{a.get('deadline_text') or a.get('deadline') or 'Not specified'}`)"
+            for a in actions[:6]
         ]) or "_None registered._"
 
         decision_lines = "\n".join([
-            f"• *{d.get('description')}* (Approved: {', '.join(d.get('approved_by', [])) or 'Consensus'})"
-            for d in decisions[:4]
+            f"• *{d.get('description')}* (Approved: {', '.join(d.get('approved_by', [])) if isinstance(d.get('approved_by'), list) else str(d.get('approved_by') or 'Consensus')})"
+            for d in decisions[:5]
         ]) or "_None registered._"
 
         return {
@@ -154,13 +167,13 @@ class IntegrationHub:
         decisions = mom_data.get("decisions", [])
 
         action_lines = "\n".join([
-            f"• *{(a.get('action') or a.get('description', '')).strip().splitlines()[0]}* — <@{a.get('owner', 'Unassigned')}> (Due: `{a.get('deadline_text') or a.get('deadline') or 'Not specified'}`)"
-            for a in actions[:5]
+            f"• *{str(a.get('task') or a.get('action') or a.get('description') or 'Action').strip()}* — <@{a.get('owner', 'Unassigned')}> (Due: `{a.get('deadline_text') or a.get('deadline') or 'Not specified'}`)"
+            for a in actions[:6]
         ]) or "_None registered._"
 
         decision_lines = "\n".join([
-            f"• *{d.get('description')}* (Approved: {', '.join(d.get('approved_by', [])) or 'Consensus'})"
-            for d in decisions[:4]
+            f"• *{d.get('description')}* (Approved: {', '.join(d.get('approved_by', [])) if isinstance(d.get('approved_by'), list) else str(d.get('approved_by') or 'Consensus')})"
+            for d in decisions[:5]
         ]) or "_None registered._"
 
         return f"*📋 MOM: {meeting_title}*\n\n*Executive Summary:*\n{exec_sum}\n\n*⚡ Critical Action Items:*\n{action_lines}\n\n*🎯 Key Decisions:*\n{decision_lines}"
@@ -175,8 +188,8 @@ class IntegrationHub:
         risks = mom_data.get("risks", [])
 
         md = f"# Minutes of Meeting: {meeting_title}\n\n## Executive Summary\n{summary}\n\n## Action Items\n"
-        md += "\n".join([f"- **[{a.get('priority', 'Medium').upper()}] {a.get('description')}** (Owner: {a.get('owner')}, Deadline: {a.get('deadline_text')})" for a in actions])
-        md += "\n\n## Decisions\n" + "\n".join([f"- **{d.get('description')}** (Approved: {', '.join(d.get('approved_by', []))})" for d in decisions])
+        md += "\n".join([f"- **[{a.get('priority', 'Medium').upper()}] {a.get('task') or a.get('action') or a.get('description')}** (Assigner: {a.get('assigner', 'Meeting Chair')}, Owner: {a.get('owner', 'Unassigned')}, Deadline: {a.get('deadline_text') or a.get('deadline') or 'Not specified'})" for a in actions])
+        md += "\n\n## Decisions\n" + "\n".join([f"- **{d.get('description')}** (Approved: {', '.join(d.get('approved_by', [])) if isinstance(d.get('approved_by'), list) else str(d.get('approved_by') or 'Consensus')})" for d in decisions])
         md += "\n\n## Risks\n" + "\n".join([f"- **[{r.get('severity', 'Medium').upper()}] {r.get('description')}** -> Mitigation: {r.get('mitigation')}" for r in risks])
         return md
 
@@ -472,32 +485,34 @@ def generate_corporate_pdf(mom_data: dict[str, Any] | Any) -> bytes:
         act_rows = [
             [
                 Paragraph("#", th_style),
-                Paragraph("Action Item (What needs to be done)", th_style),
-                Paragraph("Owner", th_style),
+                Paragraph("Action Item (Deliverable)", th_style),
+                Paragraph("Who Said (Assigner)", th_style),
+                Paragraph("Assigned To (Owner)", th_style),
                 Paragraph("Priority", th_style),
                 Paragraph("Target Deadline", th_style),
-                Paragraph("Evidence Quote / Citation", th_style),
             ]
         ]
 
         for idx, act in enumerate(actions, 1):
-            short_action = _clean_pdf_text((act.get("action") or act.get("description", "")).strip().splitlines()[0])
+            short_action = _clean_pdf_text((act.get("task") or act.get("action") or act.get("description", "")).strip().splitlines()[0])
+            assigner = _clean_pdf_text(act.get("assigner") or "Meeting Chair")
+            owner = _clean_pdf_text(act.get("owner") or "Unassigned")
+            deadline = _clean_pdf_text(act.get("deadline_text") or act.get("deadline") or "Not specified")
             pri = str(act.get("priority", "Medium")).capitalize()
             pri_style = td_badge_high if pri == "High" else (td_badge_medium if pri == "Medium" else td_badge_low)
-            owner = _clean_pdf_text(act.get("owner", "Unassigned"))
-            deadline = _clean_pdf_text(act.get("deadline_text") or act.get("deadline") or "Not specified")
             quote = _clean_pdf_text(act.get("evidence_quote") or act.get("evidence") or "")
+            action_cell = f"<b>{short_action}</b>" + (f"<br/><font color='#64748b' size='6.5'><i>Evidence: \"{quote}\"</i></font>" if quote else "")
 
             act_rows.append([
                 Paragraph(str(idx), td_style),
-                Paragraph(f"<b>{short_action}</b>", td_style),
-                Paragraph(f"<code>{owner}</code>", td_style),
+                Paragraph(action_cell, td_style),
+                Paragraph(assigner, td_style),
+                Paragraph(f"<b>{owner}</b>", td_style),
                 Paragraph(pri, pri_style),
                 Paragraph(deadline, td_style),
-                Paragraph(f"<i>\"{quote}\"</i>" if quote else "-", td_style),
             ])
 
-        act_table = Table(act_rows, colWidths=[16, 185, 75, 40, 75, 149])
+        act_table = Table(act_rows, colWidths=[16, 230, 95, 95, 40, 64])
         act_table.setStyle(
             TableStyle([
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e3a8a")),

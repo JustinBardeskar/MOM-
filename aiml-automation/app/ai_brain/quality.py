@@ -503,6 +503,70 @@ class ExecutiveActionReframingEngine:
         return f"Key Commitments: {'; '.join(summaries)}."
 
 
+class ExecutiveDecisionReframingEngine:
+    """Formal NLP & Normalization Layer that reframes raw meeting discussion agreements into professional governance decisions."""
+
+    DECISION_FILLERS: ClassVar[list[str]] = [
+        r"^(?:great|excellent|perfect|confirmed|agreed|okay|alright)[,\.\s]+",
+        r"^(?:on\s+security\s+and\s+governance|on\s+architecture|on\s+strategy|regarding\s+the\s+roadmap|for\s+the\s+sprint)[,\.\s]+",
+        r"^(?:we\s+all\s+agreed\s+to|we\s+agreed\s+to|we\s+decided\s+to|we\s+decided\s+that|we\s+also\s+approved|we\s+approved|we\s+formally\s+approved|we\s+confirmed\s+that)\s+",
+        r"^(?:the\s+decision\s+is\s+to|the\s+consensus\s+is\s+to|all\s+agreed\s+to|consensus\s+was\s+to|aligned\s+on)\s+",
+        r"^(?:as\s+a\s+team\s+we\s+agreed\s+to|it\s+was\s+decided\s+that|it\s+was\s+agreed\s+that)\s+",
+    ]
+
+    @classmethod
+    def normalize_decision_statement(cls, text: str) -> str:
+        """Cleans verbal prefixes and conversation fillers to produce a sharp governance resolution."""
+        if not text:
+            return ""
+        s = text.strip()
+        for pat in cls.DECISION_FILLERS:
+            s = re.sub(pat, "", s, flags=re.IGNORECASE).strip()
+
+        # Strip personal action statements from pure decisions if phrased as personal intent
+        if re.match(r"^i\s+(?:will|can|must)\s+", s, flags=re.IGNORECASE):
+            s = re.sub(r"^i\s+(?:will|can|must)\s+", "", s, flags=re.IGNORECASE).strip()
+
+        s = s.rstrip(" .,;")
+        if s:
+            s = s[0].upper() + s[1:]
+        return s
+
+    @classmethod
+    def reframe_decision(
+        cls,
+        raw_decision: str,
+        approved_by: list[str] | str | None = None,
+        rationale: str | None = None,
+        impact: str | None = None,
+        evidence_quote: str | None = None,
+    ) -> Decision:
+        clean_desc = cls.normalize_decision_statement(raw_decision)
+        if not clean_desc or len(clean_desc.split()) < 3:
+            clean_desc = raw_decision.strip()
+
+        approvers_list: list[str] = []
+        if isinstance(approved_by, list):
+            approvers_list = [str(a).strip() for a in approved_by if str(a).strip() and str(a).lower() not in ["none", "null"]]
+        elif isinstance(approved_by, str) and approved_by.strip():
+            approvers_list = [a.strip() for a in approved_by.split(",") if a.strip() and a.strip().lower() not in ["none", "null"]]
+
+        if not approvers_list:
+            approvers_list = ["Executive Consensus"]
+
+        clean_rationale = rationale or "Ratified by team consensus during technical/strategic discussion."
+        clean_impact = impact or "Operational, architectural, and governance alignment across teams."
+
+        return Decision(
+            description=clean_desc,
+            approved_by=approvers_list,
+            rationale=clean_rationale,
+            impact=clean_impact,
+            evidence_quote=evidence_quote or raw_decision,
+            confidence=0.94,
+        )
+
+
 VAGUE_ACTION_PATTERNS = [
     r"\bimprove\s+things\b",
     r"\baddress\s+things\b",

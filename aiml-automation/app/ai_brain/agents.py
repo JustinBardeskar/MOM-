@@ -504,15 +504,34 @@ class AgentOrchestrator:
                 ))
         deadline_out = DeadlineOutput(deadlines=deadline_items, confidence=0.95)
 
-        # Supplement with high-confidence decision extraction if empty
-        if not decisions_out.decisions:
-            try:
-                from app.ai_brain.quality import NLPCommitmentAnchorExtractor
+        # Supplement and formally reframe decisions into executive governance statements
+        try:
+            from app.ai_brain.quality import ExecutiveDecisionReframingEngine, NLPCommitmentAnchorExtractor
+            if not decisions_out.decisions:
                 extracted_decs = NLPCommitmentAnchorExtractor.extract_decisions(transcript_text)
                 if extracted_decs:
                     decisions_out = DecisionOutput(decisions=extracted_decs, confidence=0.92)
-            except Exception as exc:
-                logger.debug("Decision supplementation note: %s", exc)
+
+            reframed_decisions: list[Decision] = []
+            for d in decisions_out.decisions:
+                raw_desc = d.description if hasattr(d, "description") else str(d)
+                appr = d.approved_by if hasattr(d, "approved_by") else ["Executive Consensus"]
+                rat = getattr(d, "rationale", None)
+                imp = getattr(d, "impact", None)
+                quote = getattr(d, "evidence_quote", None)
+                reframed = ExecutiveDecisionReframingEngine.reframe_decision(
+                    raw_decision=raw_desc,
+                    approved_by=appr,
+                    rationale=rat,
+                    impact=imp,
+                    evidence_quote=quote,
+                )
+                if len(reframed.description.split()) >= 3:
+                    reframed_decisions.append(reframed)
+
+            decisions_out = DecisionOutput(decisions=reframed_decisions, confidence=0.95)
+        except Exception as exc:
+            logger.debug("Decision reframing note: %s", exc)
 
         outputs_dict = {
             AgentName.SUMMARY: summary_out,

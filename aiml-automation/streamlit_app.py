@@ -573,17 +573,51 @@ def display_mom_results(result: dict):
 
     # TAB 4: RISKS & BLOCKERS
     with out_tab4:
-        st.markdown("#### ⚠️ Risk Matrix & Mitigation Plans")
+        st.markdown("#### ⚠️ Enterprise Risk Matrix & Mitigation Strategy")
+        st.caption("Consolidated register of technical, operational, architectural, and delivery risks paired with actionable mitigation protocols.")
         if risks:
+            # 1. Executive Risk Overview Banner
+            crit_count = sum(1 for r in risks if str(r.get("severity", "")).lower() in ["high", "critical"])
+            risk_summary_text = f"Identified {len(risks)} operational and architectural risks ({crit_count} high/critical priority) requiring proactive governance."
+            st.markdown(
+                textwrap.dedent(f"""
+                <div style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(245, 158, 11, 0.08)); border-left: 4px solid #ef4444; border-radius: 8px; padding: 12px 18px; margin-bottom: 16px;">
+                    <span style="font-size: 0.82rem; font-weight: 700; color: #f87171; text-transform: uppercase; letter-spacing: 0.05em;">⚡ Executive Risk & Governance Overview</span>
+                    <div style="font-size: 0.98rem; color: #f1f5f9; margin-top: 4px; font-weight: 500;">
+                        {risk_summary_text}
+                    </div>
+                </div>
+                """).strip(),
+                unsafe_allow_html=True,
+            )
+
+            # 2. Risk Matrix Table View
+            risk_table_data = []
+            for r in risks:
+                desc = str(r.get("description", "")).strip()
+                sev = str(r.get("severity") or "Medium").upper()
+                prob = str(r.get("probability") or "Medium").upper()
+                mit = str(r.get("mitigation") or "Standard team review and continuous monitoring").strip()
+                risk_table_data.append({
+                    "Severity": sev,
+                    "Risk / Blocker Description": desc,
+                    "Probability": prob,
+                    "Mitigation Action Plan": mit,
+                })
+            df_risks = pd.DataFrame(risk_table_data)
+            st.dataframe(df_risks, use_container_width=True, hide_index=True)
+
+            # 3. Detailed Risk Cards
+            st.markdown("#### 🗂️ Risk Breakdown & Mitigations")
             for idx, r in enumerate(risks, 1):
                 desc = r.get("description", "")
                 sev = str(r.get("severity") or "medium").lower()
                 prob = str(r.get("probability") or "Medium").upper()
                 imp = str(r.get("impact") or "Medium").upper()
-                mit = r.get("mitigation") or "Standard team review"
+                mit = r.get("mitigation") or "Standard team review and continuous monitoring"
                 badge = f'<span class="badge-{sev}">{sev.upper()} SEVERITY</span>'
                 quote = r.get("evidence_quote")
-                quote_html = f'<p style="margin: 6px 0 0 0; color: #94a3b8; font-style: italic; font-size: 0.85rem;">💬 <b>Audit Citation:</b> {quote}</p>' if quote else ""
+                quote_html = f'<p style="margin: 6px 0 0 0; color: #94a3b8; font-style: italic; font-size: 0.85rem;">💬 <b>Audit Citation:</b> "{quote}"</p>' if quote else ""
 
                 card_html = textwrap.dedent(f"""
                 <div class="card-box card-risk" style="padding: 16px 20px; margin-bottom: 12px; border-left: 4px solid #ef4444;">
