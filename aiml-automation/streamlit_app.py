@@ -506,29 +506,68 @@ def display_mom_results(result: dict):
 
     # TAB 3: DECISIONS
     with out_tab3:
-        st.markdown("#### ⚖️ Formal Decisions & Approvals Log")
-        st.caption("Consolidated list of ratified agreements, approved budgets, and architectural decisions.")
+        st.markdown("#### ⚖️ Formal Decisions & Governance Approvals Log")
+        st.caption("Consolidated list of ratified agreements, approved architectural paths, and policy sign-offs.")
         if decisions:
-            for idx, d in enumerate(decisions, 1):
-                desc = d.get("description", "")
-                approvers = d.get("approved_by", [])
-                approved_by_text = f" &nbsp;|&nbsp; ✅ <b>Approved By:</b> <code>{', '.join(approvers)}</code>" if approvers else ""
-                impact_text = f" &nbsp;|&nbsp; 🏛️ <b>Impact:</b> {d.get('impact')}" if d.get("impact") else ""
-                quote = d.get("evidence_quote")
-                quote_html = f'<p style="margin: 4px 0 0 0; color: #94a3b8; font-style: italic; font-size: 0.85rem;">💬 <b>Evidence:</b> {quote}</p>' if quote else ""
-
-                st.markdown(
-                    f"""
-                    <div class="card-box card-decision">
-                        <b style="font-size: 1.02rem; color: #6ee7b7;">Decision #{idx}: {desc}</b>
-                        <div style="margin-top: 4px; color: #cbd5e1; font-size: 0.88rem;">
-                            📌 <b>Resolution:</b> {desc}{approved_by_text}{impact_text}
-                        </div>
-                        {quote_html}
+            # 1. Executive Decision Summary Banner
+            top_dec_descriptions = [d.get("description", "") for d in decisions if d.get("description")]
+            dec_summary_text = f"Consensus reached on {len(decisions)} key governance resolutions: {'; '.join(top_dec_descriptions[:2])}."
+            st.markdown(
+                textwrap.dedent(f"""
+                <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(59, 130, 246, 0.08)); border-left: 4px solid #10b981; border-radius: 8px; padding: 12px 18px; margin-bottom: 16px;">
+                    <span style="font-size: 0.82rem; font-weight: 700; color: #34d399; text-transform: uppercase; letter-spacing: 0.05em;">⚡ Executive Decision Overview</span>
+                    <div style="font-size: 0.98rem; color: #f1f5f9; margin-top: 4px; font-weight: 500;">
+                        {dec_summary_text}
                     </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                </div>
+                """).strip(),
+                unsafe_allow_html=True,
+            )
+
+            # 2. Decision Matrix Table View
+            dec_table_data = []
+            for d in decisions:
+                desc = str(d.get("description", "")).strip()
+                approvers = d.get("approved_by", [])
+                approvers_str = ", ".join(approvers) if isinstance(approvers, list) else str(approvers or "Stakeholders Consensus")
+                impact = str(d.get("impact") or "Operational & architectural alignment").strip()
+                dec_table_data.append({
+                    "Status": "✅ RATIFIED",
+                    "Decision / Resolution": desc,
+                    "Approved By": approvers_str,
+                    "Strategic Impact": impact,
+                })
+            df_decisions = pd.DataFrame(dec_table_data)
+            st.dataframe(df_decisions, use_container_width=True, hide_index=True)
+
+            # 3. Detailed Decision Cards
+            st.markdown("#### 🗂️ Decision & Governance Details")
+            for idx, d in enumerate(decisions, 1):
+                desc = str(d.get("description", "")).strip()
+                approvers = d.get("approved_by", [])
+                approvers_str = ", ".join(approvers) if isinstance(approvers, list) else str(approvers or "Stakeholders Consensus")
+                rationale = str(d.get("rationale") or "Agreed by consensus during discussion.").strip()
+                impact = str(d.get("impact") or "Operational & architectural alignment").strip()
+                quote = d.get("evidence_quote")
+                quote_html = f'<div style="margin-top: 8px; color: #94a3b8; font-style: italic; font-size: 0.84rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">💬 <b>Evidence:</b> "{quote}"</div>' if quote else ""
+
+                card_html = textwrap.dedent(f"""
+                <div class="card-box card-decision" style="padding: 16px 20px; margin-bottom: 12px; border-left: 4px solid #10b981;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+                        <b style="font-size: 1.08rem; color: #6ee7b7; line-height: 1.4;">Decision #{idx}: {desc}</b>
+                        <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.8rem;">RATIFIED</span>
+                    </div>
+                    <div style="margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 0.88rem; color: #e2e8f0;">
+                        <span style="background: rgba(16, 185, 129, 0.15); color: #86efac; padding: 2px 8px; border-radius: 4px; font-weight: 600;">✅ Approved By: {approvers_str}</span>
+                        <span style="background: rgba(59, 130, 246, 0.15); color: #93c5fd; padding: 2px 8px; border-radius: 4px; font-weight: 600;">🏛️ Impact: {impact}</span>
+                    </div>
+                    <div style="margin-top: 8px; color: #cbd5e1; font-size: 0.88rem;">
+                        💡 <b>Rationale:</b> {rationale}
+                    </div>
+                    {quote_html}
+                </div>
+                """).strip()
+                st.markdown(card_html, unsafe_allow_html=True)
         else:
             st.info("No formal decisions recorded from this discussion.")
 
@@ -546,25 +585,23 @@ def display_mom_results(result: dict):
                 quote = r.get("evidence_quote")
                 quote_html = f'<p style="margin: 6px 0 0 0; color: #94a3b8; font-style: italic; font-size: 0.85rem;">💬 <b>Audit Citation:</b> {quote}</p>' if quote else ""
 
-                st.markdown(
-                    f"""
-                    <div class="card-box card-risk">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <b style="font-size: 1.05rem; color: #fca5a5;">Risk #{idx}: {desc}</b>
-                            {badge}
-                        </div>
-                        <p style="margin: 8px 0 4px 0; color: #e2e8f0; font-size: 0.9rem;">
-                            🛡️ <b>Mitigation Action Plan:</b> {mit}
-                        </p>
-                        <span style="color: #94a3b8; font-size: 0.82rem;">
-                            📊 <b>Probability:</b> <code>{prob}</code> &nbsp;|&nbsp; 
-                            💥 <b>Impact:</b> <code>{imp}</code>
-                        </span>
-                        {quote_html}
+                card_html = textwrap.dedent(f"""
+                <div class="card-box card-risk" style="padding: 16px 20px; margin-bottom: 12px; border-left: 4px solid #ef4444;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <b style="font-size: 1.05rem; color: #fca5a5;">Risk #{idx}: {desc}</b>
+                        {badge}
                     </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                    <p style="margin: 8px 0 4px 0; color: #e2e8f0; font-size: 0.9rem;">
+                        🛡️ <b>Mitigation Action Plan:</b> {mit}
+                    </p>
+                    <span style="color: #94a3b8; font-size: 0.82rem;">
+                        📊 <b>Probability:</b> <code>{prob}</code> &nbsp;|&nbsp; 
+                        💥 <b>Impact:</b> <code>{imp}</code>
+                    </span>
+                    {quote_html}
+                </div>
+                """).strip()
+                st.markdown(card_html, unsafe_allow_html=True)
         else:
             st.caption("No major blockers or critical risks identified.")
 

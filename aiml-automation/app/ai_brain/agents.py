@@ -504,6 +504,16 @@ class AgentOrchestrator:
                 ))
         deadline_out = DeadlineOutput(deadlines=deadline_items, confidence=0.95)
 
+        # Supplement with high-confidence decision extraction if empty
+        if not decisions_out.decisions:
+            try:
+                from app.ai_brain.quality import NLPCommitmentAnchorExtractor
+                extracted_decs = NLPCommitmentAnchorExtractor.extract_decisions(transcript_text)
+                if extracted_decs:
+                    decisions_out = DecisionOutput(decisions=extracted_decs, confidence=0.92)
+            except Exception as exc:
+                logger.debug("Decision supplementation note: %s", exc)
+
         outputs_dict = {
             AgentName.SUMMARY: summary_out,
             AgentName.ACTION: actions_out,

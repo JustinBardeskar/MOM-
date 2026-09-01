@@ -20,6 +20,7 @@ from pydantic import Field
 from app.ai_brain.models import (
     ActionItem,
     AgentName,
+    Decision,
     LLMRequest,
     LLMResponse,
     SentimentOutput,
@@ -64,6 +65,8 @@ class NLPCommitmentAnchorExtractor:
     DECISION_TRIGGERS: ClassVar[list[str]] = [
         "we agreed to", "we decided to", "we decided that", "we also approved",
         "approved the", "unanimously agreed", "consensus is", "ratified",
+        "all agreed to", "agreed that", "decided on", "decision is to",
+        "formally approved", "consensus was to", "aligned on", "settled on",
     ]
 
     @classmethod
@@ -103,6 +106,45 @@ class NLPCommitmentAnchorExtractor:
                             )
                         )
         return anchors[:12]
+
+    @classmethod
+    def extract_decisions(cls, transcript_text: str) -> list[Decision]:
+        decisions: list[Decision] = []
+        if not transcript_text:
+            return decisions
+        lines = [line.strip() for line in transcript_text.splitlines() if line.strip()]
+        for line in lines:
+            speaker = None
+            text = line
+            if ":" in line:
+                parts = line.split(":", 1)
+                if len(parts[0].split()) <= 4 and len(parts[0]) < 30:
+                    speaker = parts[0].strip()
+                    text = parts[1].strip()
+
+            lower = text.lower()
+            if any(t in lower for t in cls.DECISION_TRIGGERS):
+                clean_desc = text
+                for prefix in [
+                    "we all agreed to ", "we agreed to ", "we decided to ", "we decided that ",
+                    "we also approved ", "we approved ", "all agreed to ", "consensus is to ",
+                    "the decision is to ", "agreed to ", "decided to "
+                ]:
+                    if clean_desc.lower().startswith(prefix):
+                        clean_desc = clean_desc[len(prefix):].strip()
+                clean_desc = clean_desc[0].upper() + clean_desc[1:] if clean_desc else clean_desc
+                if len(clean_desc.split()) >= 3 and not ActionNormalizer.is_non_action_discussion(clean_desc):
+                    decisions.append(
+                        Decision(
+                            description=clean_desc,
+                            rationale="Consensus reached during discussion.",
+                            approved_by=[speaker] if speaker else ["Stakeholders Consensus"],
+                            impact="Operational and strategic alignment across workstreams.",
+                            evidence_quote=text,
+                            confidence=0.92,
+                        )
+                    )
+        return decisions[:8]
 
 
 # ==========================================
